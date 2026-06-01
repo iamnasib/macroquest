@@ -1,0 +1,104 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️ Supabase env vars missing. Check your .env file.')
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  }
+)
+
+// ─── Auth Helpers ─────────────────────────────────────────────────────────────
+export const auth = {
+  signUp: (email, password) => supabase.auth.signUp({ email, password }),
+  signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
+  signOut: () => supabase.auth.signOut(),
+  getUser: () => supabase.auth.getUser(),
+  onAuthChange: (cb) => supabase.auth.onAuthStateChange(cb),
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+export const profiles = {
+  get: (userId) =>
+    supabase.from('profiles').select('*').eq('id', userId).single(),
+
+  create: (userId, data) =>
+    supabase.from('profiles').insert({ id: userId, ...data }),
+
+  update: (userId, data) =>
+    supabase.from('profiles').update(data).eq('id', userId),
+}
+
+// ─── Food Logs ────────────────────────────────────────────────────────────────
+export const foodLogs = {
+  getToday: (userId) => {
+    const today = new Date().toISOString().split('T')[0]
+    return supabase
+      .from('food_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('log_date', today)
+      .order('created_at', { ascending: true })
+  },
+
+  getByDate: (userId, date) =>
+    supabase
+      .from('food_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('log_date', date)
+      .order('created_at', { ascending: true }),
+
+  add: (entry) => supabase.from('food_logs').insert(entry).select().single(),
+
+  remove: (id) => supabase.from('food_logs').delete().eq('id', id),
+
+  getDailySummary: (userId, date) =>
+    supabase.rpc('get_daily_summary', { p_user_id: userId, p_date: date }),
+}
+
+// ─── Streaks ──────────────────────────────────────────────────────────────────
+export const streaks = {
+  get: (userId) =>
+    supabase.from('streaks').select('*').eq('user_id', userId).single(),
+
+  upsert: (userId, data) =>
+    supabase.from('streaks').upsert({ user_id: userId, ...data }),
+}
+
+// ─── Quest Progress ───────────────────────────────────────────────────────────
+export const questProgress = {
+  getToday: (userId) => {
+    const today = new Date().toISOString().split('T')[0]
+    return supabase
+      .from('quest_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('quest_date', today)
+  },
+
+  upsert: (data) => supabase.from('quest_progress').upsert(data),
+}
+
+// ─── Character / XP ───────────────────────────────────────────────────────────
+export const characters = {
+  get: (userId) =>
+    supabase.from('characters').select('*').eq('user_id', userId).single(),
+
+  update: (userId, data) =>
+    supabase.from('characters').update(data).eq('user_id', userId),
+
+  addXP: (userId, xp) =>
+    supabase.rpc('add_xp', { p_user_id: userId, p_xp: xp }),
+}
