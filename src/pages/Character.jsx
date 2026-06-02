@@ -72,11 +72,11 @@ export default function Character() {
             {/* XP bar */}
             <div className="mt-4 max-w-sm">
               <div className="flex justify-between mb-1">
-                <span className="text-xs font-ui text-text-muted">XP Progress</span>
-                <span className="text-xs font-ui text-gold">{levelData.currentXP} / {levelData.xpNeeded}</span>
+                <span className="text-xs font-ui text-text-muted">Level {levelData.level} Progress</span>
+                <span className="text-xs font-ui text-gold">{levelData.currentXP} / {levelData.xpNeeded} XP</span>
               </div>
               <ProgressBar value={levelData.currentXP} max={levelData.xpNeeded} color="gold" />
-              <p className="text-xs text-text-muted font-ui mt-1">{levelData.xpNeeded - levelData.currentXP} XP to Level {levelData.level + 1}</p>
+              <p className="text-xs text-text-muted font-ui mt-1">{levelData.xpNeeded - levelData.currentXP} XP to Level {levelData.level + 1} · Total: {totalXP} XP</p>
             </div>
           </div>
 

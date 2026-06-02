@@ -169,7 +169,15 @@ export const useGameStore = create(
       removeFoodLog: async (userId, logId) => {
         const { error } = await foodLogs.remove(logId)
         if (error) throw error
+
+        // Reverse the +15 XP that was granted when this meal was logged (clamped at 0 in DB)
+        await characters.addXP(userId, -15)
         await get().loadTodayLogs(userId)
+
+        const { data: charData } = await characters.get(userId)
+        if (charData) {
+          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+        }
       },
 
       // ─── Quest completion handler — persists XP to DB ────────────────────
