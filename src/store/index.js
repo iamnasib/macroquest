@@ -336,10 +336,7 @@ export const useGameStore = create(
     }),
     {
       name: 'macroquest-game',
-      partialize: (state) => ({
-        completedQuestIds: state.completedQuestIds,
-        lastQuestDate: state.lastQuestDate,
-      }),
+      partialize: () => ({}),
     }
   )
 )
