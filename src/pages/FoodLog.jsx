@@ -10,7 +10,7 @@ const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Pos
 
 export default function FoodLog() {
   const { user } = useAuthStore()
-  const { todayLogs, todayTotals, profile, addFoodLog, removeFoodLog, loadTodayLogs } = useGameStore()
+  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog, loadTodayLogs } = useGameStore()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -58,7 +58,7 @@ export default function FoodLog() {
   useEffect(() => { setResults(COMMON_FOODS.slice(0, 10)) }, [])
 
   const preview = selected ? calculateServing(selected, serving) : null
-  const previewResources = preview ? nutritionToResources(preview) : null
+  const previewResources = preview ? nutritionToResources(preview, character?.character_type) : null
 
   const handleLog = async () => {
     if (!selected || !preview) return

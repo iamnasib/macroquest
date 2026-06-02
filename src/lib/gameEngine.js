@@ -36,22 +36,6 @@ export function nutritionToResources(nutrition, characterType = null) {
   }
 }
 
-// ─── XP Calculation ───────────────────────────────────────────────────────────
-export function calculateDayXP({ calorieGoal, caloriesConsumed, proteinGoal, proteinConsumed, questsCompleted = 0, streakBonus = 0, characterType = null }) {
-  let xp = 0
-  xp += 50
-  const calRatio = caloriesConsumed / calorieGoal
-  if (calRatio >= 0.9 && calRatio <= 1.1) xp += 150
-  else if (calRatio >= 0.8 && calRatio <= 1.2) xp += 75
-  const proRatio = proteinConsumed / proteinGoal
-  if (proRatio >= 0.95) xp += 100
-  else if (proRatio >= 0.8) xp += 50
-  xp += questsCompleted * 75
-  xp += characterType === 'samurai' ? Math.round(streakBonus * 1.15) : streakBonus
-  if (characterType === 'mage') xp = Math.round(xp * 1.1)
-  return xp
-}
-
 // ─── Level System ─────────────────────────────────────────────────────────────
 export function xpForLevel(level) {
   return Math.floor(100 * Math.pow(level, 1.5))

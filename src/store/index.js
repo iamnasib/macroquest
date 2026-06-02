@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase, foodLogs, profiles, streaks, characters, dailySummaries } from '../lib/supabase'
-import { nutritionToResources, calculateDayXP, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
+import { nutritionToResources, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
 
 function getTodayLocal() {
   return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local timezone
@@ -16,7 +16,42 @@ export const useAuthStore = create((set, get) => ({
   init: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     set({ session, user: session?.user ?? null, loading: false })
-    supabase.auth.onAuthStateChange((_, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      // For new users confirming email, bootstrap their DB rows before
+      // setting user state — prevents loadProfile racing against missing rows.
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userId = session.user.id
+        const { data: existing } = await supabase
+          .from('profiles').select('id').eq('id', userId).single()
+        if (!existing) {
+          const username =
+            session.user.user_metadata?.username ||
+            session.user.email?.split('@')[0] ||
+            'Champion'
+          await Promise.all([
+            supabase.from('profiles').insert({
+              id: userId,
+              username,
+              calorie_goal: 2000,
+              protein_goal: 150,
+              game_mode: 'EMPIRE',
+            }),
+            supabase.from('characters').insert({
+              user_id: userId,
+              character_type: 'warrior',
+              avatar: '⚔️',
+              total_xp: 0,
+              level: 1,
+            }),
+            supabase.from('streaks').insert({
+              user_id: userId,
+              logging: 0,
+              protein: 0,
+              budget: 0,
+            }),
+          ])
+        }
+      }
       set({ session, user: session?.user ?? null })
     })
   },
@@ -141,13 +176,20 @@ export const useGameStore = create(
         })
       },
 
+      // ─── Apply character class XP multiplier (Mage: +10%) ───────────────
+      applyXPBonus: (baseXP) => {
+        const charType = get().character?.character_type
+        return charType === 'mage' ? Math.round(baseXP * 1.1) : baseXP
+      },
+
       // ─── Add food log ────────────────────────────────────────────────────
       addFoodLog: async (userId, entry) => {
         const { data, error } = await foodLogs.add({ user_id: userId, ...entry })
         if (error) throw error
 
-        // Save +15 XP for logging a meal
-        await characters.addXP(userId, 15)
+        // +15 XP for logging, boosted by Mage bonus
+        const logXP = get().applyXPBonus(15)
+        await characters.addXP(userId, logXP)
 
         // Update logging streak
         await get().updateStreak(userId)
@@ -161,7 +203,7 @@ export const useGameStore = create(
           set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
         }
 
-        get().addXPPopup('+15 XP', 'food')
+        get().addXPPopup(`+${logXP} XP`, 'food')
         return data
       },
 
@@ -170,8 +212,9 @@ export const useGameStore = create(
         const { error } = await foodLogs.remove(logId)
         if (error) throw error
 
-        // Reverse the +15 XP that was granted when this meal was logged (clamped at 0 in DB)
-        await characters.addXP(userId, -15)
+        // Reverse the logging XP (same amount that was granted, clamped at 0 in DB)
+        const logXP = get().applyXPBonus(15)
+        await characters.addXP(userId, -logXP)
         await get().loadTodayLogs(userId)
 
         const { data: charData } = await characters.get(userId)
@@ -183,7 +226,8 @@ export const useGameStore = create(
       // ─── Quest completion handler — persists XP to DB ────────────────────
       handleQuestCompletion: async (userId, completedQuests) => {
         const ids = completedQuests.map(q => q.id)
-        const xpGained = completedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
+        const baseXP = completedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
+        const xpGained = get().applyXPBonus(baseXP)
 
         set(state => ({
           completedQuestIds: [...state.completedQuestIds, ...ids],
@@ -232,6 +276,16 @@ export const useGameStore = create(
         })
 
         set({ streakData: { ...current, logging: newLogging } })
+
+        // Grant milestone XP only when the streak hits exactly 3, 7, 14, or 30.
+        // Samurai gets +15% on top of the base bonus.
+        const bonus = getStreakBonus(newLogging)
+        if (bonus.xp > 0 && [3, 7, 14, 30].includes(newLogging)) {
+          const charType = get().character?.character_type
+          const streakXP = charType === 'samurai' ? Math.round(bonus.xp * 1.15) : bonus.xp
+          await characters.addXP(userId, streakXP)
+          get().addXPPopup(`+${streakXP} XP ${bonus.label}`, 'streak')
+        }
       },
 
       // ─── XP Popup system ─────────────────────────────────────────────────
