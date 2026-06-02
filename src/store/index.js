@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase, foodLogs, profiles, streaks, characters, dailySummaries } from '../lib/supabase'
+import { supabase, foodLogs, profiles, streaks, characters, dailySummaries, questProgress } from '../lib/supabase'
 import { nutritionToResources, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
 
 function getTodayLocal() {
@@ -133,6 +133,16 @@ export const useGameStore = create(
           set({ completedQuestIds: [], lastQuestDate: today })
         }
 
+        // Sync quest completions from DB — ensures cross-device consistency.
+        // If the user completed quests on another device, those IDs are merged
+        // into the local set so XP is not awarded a second time here.
+        const { data: dbProgress } = await questProgress.getToday(userId)
+        if (dbProgress?.length > 0) {
+          const dbIds = dbProgress.map(r => r.quest_id)
+          const merged = [...new Set([...(get().completedQuestIds || []), ...dbIds])]
+          set({ completedQuestIds: merged })
+        }
+
         const { data, error } = await foodLogs.getToday(userId)
         if (error) return
 
@@ -229,15 +239,27 @@ export const useGameStore = create(
         }
       },
 
-      // ─── Quest completion handler — persists XP to DB ────────────────────
+      // ─── Quest completion handler — persists XP and quest state to DB ───
       handleQuestCompletion: async (userId, completedQuests) => {
         const ids = completedQuests.map(q => q.id)
+        const today = getTodayLocal()
         const baseXP = completedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
         const xpGained = get().applyXPBonus(baseXP)
 
         set(state => ({
           completedQuestIds: [...state.completedQuestIds, ...ids],
         }))
+
+        // Persist completions to DB (fire-and-forget) for cross-device sync
+        questProgress.upsert(
+          ids.map(quest_id => ({
+            user_id: userId,
+            quest_id,
+            quest_date: today,
+            completed: true,
+            completed_at: new Date().toISOString(),
+          }))
+        )
 
         if (xpGained > 0) {
           await characters.addXP(userId, xpGained)

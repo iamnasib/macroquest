@@ -81,15 +81,19 @@ export const streaks = {
 // ─── Quest Progress ───────────────────────────────────────────────────────────
 export const questProgress = {
   getToday: (userId) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA') // local YYYY-MM-DD
     return supabase
       .from('quest_progress')
-      .select('*')
+      .select('quest_id')
       .eq('user_id', userId)
       .eq('quest_date', today)
+      .eq('completed', true)
   },
 
-  upsert: (data) => supabase.from('quest_progress').upsert(data),
+  upsert: (records) =>
+    supabase
+      .from('quest_progress')
+      .upsert(records, { onConflict: 'user_id,quest_id,quest_date' }),
 }
 
 // ─── Daily Summaries ─────────────────────────────────────────────────────────

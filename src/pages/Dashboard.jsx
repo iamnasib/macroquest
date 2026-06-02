@@ -61,7 +61,7 @@ export default function Dashboard() {
         <div>
           <p className="text-text-muted font-ui text-sm">{date}</p>
           <h2 className="font-pixel text-gold glow-text-gold mt-0.5" style={{ fontSize: '0.75rem' }}>
-            {worldStage.icon} {worldStage.name} · Day {totalDays + 1}
+            {worldStage.icon} {worldStage.name} · Day {Math.max(1, totalDays)}
           </h2>
           <p className="text-text-muted font-ui text-xs mt-0.5">{worldStage.desc}</p>
         </div>
