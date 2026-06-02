@@ -184,7 +184,7 @@ export const useGameStore = create(
           quests,
         })
 
-        // Persist daily snapshot for weekly summaries (fire-and-forget)
+        // Persist daily snapshot for weekly summaries
         const completedCount = quests.filter(q => q.completed).length
         dailySummaries.upsert(userId, today, {
           total_calories:   totals.calories,
@@ -193,6 +193,8 @@ export const useGameStore = create(
           total_fat:        totals.fat,
           quests_completed: completedCount,
           xp_earned:        get().todayXP,
+        }).then(({ error }) => {
+          if (error) console.error('daily_summaries upsert failed:', error)
         })
       },
 

@@ -75,7 +75,7 @@ export const streaks = {
     supabase.from('streaks').select('*').eq('user_id', userId).single(),
 
   upsert: (userId, data) =>
-    supabase.from('streaks').upsert({ user_id: userId, ...data }),
+    supabase.from('streaks').upsert({ user_id: userId, ...data }, { onConflict: 'user_id' }),
 }
 
 // ─── Quest Progress ───────────────────────────────────────────────────────────
