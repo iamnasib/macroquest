@@ -113,8 +113,8 @@ function QuestCard({ quest }) {
   const navigate = useNavigate()
   const pct = quest.total > 0 ? Math.min((quest.progress / quest.total) * 100, 100) : 0
   const progressText = quest.id === 'calorie_target'
-    ? `${Math.round(quest.progress)} / ${quest.total} EP`
-    : `${Math.round(quest.progress)} / ${quest.total}`
+    ? `${Math.round(quest.progress)} / ${Math.round(quest.total)} EP`
+    : `${Math.round(quest.progress)} / ${Math.round(quest.total)}`
 
   return (
     <div
