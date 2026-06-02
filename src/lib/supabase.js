@@ -43,7 +43,7 @@ export const profiles = {
 // ─── Food Logs ────────────────────────────────────────────────────────────────
 export const foodLogs = {
   getToday: (userId) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA') // local YYYY-MM-DD
     return supabase
       .from('food_logs')
       .select('*')

@@ -54,6 +54,10 @@ export default function FoodLog() {
 
   const handleLog = async () => {
     if (!selected || !preview) return
+    if (!serving || serving < 1 || serving > 5000) {
+      toast.error('Serving size must be between 1g and 5000g.')
+      return
+    }
     setLogging(true)
     try {
       await addFoodLog(user.id, {
@@ -61,7 +65,7 @@ export default function FoodLog() {
         brand:        selected.brand || '',
         serving_size: serving,
         meal_type:    mealType,
-        log_date:     new Date().toISOString().split('T')[0],
+        log_date:     new Date().toLocaleDateString('en-CA'),
         calories: preview.calories,
         protein:  preview.protein,
         carbs:    preview.carbs,
@@ -80,6 +84,7 @@ export default function FoodLog() {
   }
 
   const handleRemove = async (logId, name) => {
+    if (!window.confirm(`Remove "${name}" from today's log?`)) return
     try {
       await removeFoodLog(user.id, logId)
       toast.success(`Removed ${name}`)
@@ -284,7 +289,8 @@ export default function FoodLog() {
                           <ResourceChip type="energy" amount={Math.round(log.calories)} />
                           <button
                             onClick={() => handleRemove(log.id, log.food_name)}
-                            className="text-text-muted hover:text-rose transition-colors opacity-0 group-hover:opacity-100 text-sm"
+                            className="text-text-muted hover:text-rose transition-colors text-sm p-1"
+                            aria-label={`Remove ${log.food_name}`}
                           >
                             ✕
                           </button>

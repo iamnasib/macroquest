@@ -109,8 +109,8 @@ export function generateDailyQuests(userGoals, currentLog) {
       type: 'MEDIUM',
       reward: { xp: 100, iron: 50 },
       completed: protein >= proteinGoal * 0.8,
-      progress: Math.min(protein, proteinGoal),
-      total: proteinGoal,
+      progress: Math.min(protein, proteinGoal * 0.8),
+      total: proteinGoal * 0.8,
       icon: '🔩',
     },
     {

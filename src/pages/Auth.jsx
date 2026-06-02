@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store'
-import { auth } from '../lib/supabase'
+import { auth, supabase } from '../lib/supabase'
 import { Input, Divider, Spinner } from '../components/ui'
 import toast from 'react-hot-toast'
 
@@ -133,7 +133,6 @@ export default function Auth() {
 }
 
 async function bootstrapNewUser(user, username) {
-  const { supabase } = await import('../lib/supabase')
   await Promise.all([
     supabase.from('profiles').insert({
       id: user.id,
