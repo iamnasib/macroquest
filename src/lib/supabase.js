@@ -94,6 +94,14 @@ export const questProgress = {
     supabase
       .from('quest_progress')
       .upsert(records, { onConflict: 'user_id,quest_id,quest_date' }),
+
+  deleteForDate: (userId, questIds, date) =>
+    supabase
+      .from('quest_progress')
+      .delete()
+      .eq('user_id', userId)
+      .eq('quest_date', date)
+      .in('quest_id', questIds),
 }
 
 // ─── Daily Summaries ─────────────────────────────────────────────────────────

@@ -117,7 +117,7 @@ export const useGameStore = create(
             loading: false,
             profileLoaded: true,
           })
-          await get().loadTodayLogs(userId)
+          await get().loadTodayLogs(userId, { grantXP: false })
         } catch (err) {
           console.error('Load profile error:', err)
           set({ loading: false })
@@ -125,7 +125,9 @@ export const useGameStore = create(
       },
 
       // ─── Load today's food logs ──────────────────────────────────────────
-      loadTodayLogs: async (userId) => {
+      // grantXP:true  → award quest XP if quests newly complete (user action)
+      // grantXP:false → update display/tracking only, no XP granted (page load)
+      loadTodayLogs: async (userId, { grantXP = true } = {}) => {
         const today = getTodayLocal()
 
         // Reset completed quest IDs at the start of a new calendar day
@@ -133,9 +135,7 @@ export const useGameStore = create(
           set({ completedQuestIds: [], lastQuestDate: today })
         }
 
-        // Sync quest completions from DB — ensures cross-device consistency.
-        // If the user completed quests on another device, those IDs are merged
-        // into the local set so XP is not awarded a second time here.
+        // Sync quest completions from DB — cross-device consistency
         const { data: dbProgress } = await questProgress.getToday(userId)
         if (dbProgress?.length > 0) {
           const dbIds = dbProgress.map(r => r.quest_id)
@@ -165,7 +165,15 @@ export const useGameStore = create(
 
         const newlyCompleted = quests.filter(q => q.completed && !get().completedQuestIds.includes(q.id))
         if (newlyCompleted.length > 0) {
-          await get().handleQuestCompletion(userId, newlyCompleted)
+          if (grantXP) {
+            await get().handleQuestCompletion(userId, newlyCompleted)
+          } else {
+            // Track in memory so we don't re-check next time, but don't grant XP
+            const ids = newlyCompleted.map(q => q.id)
+            set(state => ({
+              completedQuestIds: [...new Set([...state.completedQuestIds, ...ids])],
+            }))
+          }
         }
 
         set({
@@ -219,20 +227,45 @@ export const useGameStore = create(
 
       // ─── Remove food log ─────────────────────────────────────────────────
       removeFoodLog: async (userId, logId) => {
+        // Snapshot which quests were complete before this removal
+        const questsBefore = get().quests.filter(q => q.completed)
+
         const { error } = await foodLogs.remove(logId)
         if (error) throw error
 
+        // Reverse the 15 XP that was granted when this food was logged
         const logXP = get().applyXPBonus(15)
-
-        // Optimistic update — reflect XP removal in store immediately so
-        // the UI doesn't wait for the DB round-trip to confirm the change.
-        const newTotalXP = Math.max(0, get().totalXP - logXP)
-        set({ totalXP: newTotalXP, levelData: getLevelFromXP(newTotalXP) })
-
         await characters.addXP(userId, -logXP)
-        await get().loadTodayLogs(userId)
 
-        // Confirm from DB (reconciles any quest-related XP side-effects)
+        // Reload quest/log state without granting XP
+        await get().loadTodayLogs(userId, { grantXP: false })
+
+        // Check which quests this removal just un-completed
+        const questsAfter = get().quests
+        const uncompletedQuests = questsBefore.filter(qb =>
+          !questsAfter.find(qa => qa.id === qb.id && qa.completed)
+        )
+
+        if (uncompletedQuests.length > 0) {
+          const baseXP = uncompletedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
+          const xpToRemove = get().applyXPBonus(baseXP)
+          const ids = uncompletedQuests.map(q => q.id)
+
+          // Remove from in-memory tracking
+          set(state => ({
+            completedQuestIds: state.completedQuestIds.filter(id => !ids.includes(id)),
+          }))
+
+          // Remove from DB
+          await questProgress.deleteForDate(userId, ids, getTodayLocal())
+
+          // Reverse the quest XP
+          if (xpToRemove > 0) {
+            await characters.addXP(userId, -xpToRemove)
+          }
+        }
+
+        // Confirm final XP from DB
         const { data: charData } = await characters.get(userId)
         if (charData) {
           set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
@@ -250,8 +283,8 @@ export const useGameStore = create(
           completedQuestIds: [...state.completedQuestIds, ...ids],
         }))
 
-        // Persist completions to DB (fire-and-forget) for cross-device sync
-        questProgress.upsert(
+        // Persist completions to DB — awaited so refresh can't double-grant
+        await questProgress.upsert(
           ids.map(quest_id => ({
             user_id: userId,
             quest_id,
