@@ -47,7 +47,7 @@ export default function ARIAPage() {
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '⚠️ Connection to ARIA interrupted. Check your API key in the .env file.',
+        content: '⚠️ Connection to ARIA interrupted. Please try again in a moment.',
         ts: Date.now(),
       }])
     } finally {
@@ -101,8 +101,8 @@ export default function ARIAPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+        {messages.map((msg) => (
+          <div key={msg.ts + msg.role} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
               <div className="w-8 h-8 rounded-full bg-violet/20 border border-violet/40 flex items-center justify-center text-sm shrink-0 mt-1">
                 🤖

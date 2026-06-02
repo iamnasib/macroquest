@@ -7,14 +7,10 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const ARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/aria`;
 
-// Still used locally to detect missing setup
-const NVIDIA_API_KEY =
-  import.meta.env.VITE_NVIDIA_API_KEY || "PLACEHOLDER_NVIDIA_API_KEY";
-
 // ─── Core AI Call (via Edge Function proxy) ───────────────────────────────────
 async function callAI(messages, maxTokens = 300) {
-  // Fall back to mock if key is still placeholder
-  if (NVIDIA_API_KEY === "PLACEHOLDER_NVIDIA_API_KEY") {
+  // Fall back to mock when no Supabase project is configured
+  if (!SUPABASE_URL || SUPABASE_URL.includes('placeholder')) {
     return getMockResponse(messages);
   }
 

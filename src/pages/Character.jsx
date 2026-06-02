@@ -62,7 +62,7 @@ export default function Character() {
           {/* Stats */}
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <h3 className="font-pixel text-gold glow-text-gold" style={{ fontSize: '0.8rem' }}>
-              {user?.user_metadata?.username || 'Champion'}
+              {profile?.username || user?.email?.split('@')[0] || 'Champion'}
             </h3>
             <p className="font-ui text-text-muted text-sm mt-0.5">{levelTitle}</p>
             <p className="font-ui text-xs text-text-muted mt-1">{worldStage.icon} {worldStage.name} · Day {totalDays}</p>

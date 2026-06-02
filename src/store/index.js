@@ -1,7 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase, foodLogs, profiles, streaks, characters } from '../lib/supabase'
-import { nutritionToResources, calculateDayXP, getLevelFromXP, generateDailyQuests } from '../lib/gameEngine'
+import { nutritionToResources, calculateDayXP, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
+
+function getTodayLocal() {
+  return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local timezone
+}
 
 // ─── Auth Store ───────────────────────────────────────────────────────────────
 export const useAuthStore = create((set, get) => ({
@@ -40,6 +44,7 @@ export const useGameStore = create(
       // Quests
       quests: [],
       completedQuestIds: [],
+      lastQuestDate: null,
 
       // Streaks
       streakData: { logging: 0, protein: 0, budget: 0 },
@@ -84,6 +89,13 @@ export const useGameStore = create(
 
       // ─── Load today's food logs ──────────────────────────────────────────
       loadTodayLogs: async (userId) => {
+        const today = getTodayLocal()
+
+        // Reset completed quest IDs at the start of a new calendar day
+        if (get().lastQuestDate !== today) {
+          set({ completedQuestIds: [], lastQuestDate: today })
+        }
+
         const { data, error } = await foodLogs.getToday(userId)
         if (error) return
 
@@ -106,7 +118,7 @@ export const useGameStore = create(
 
         const newlyCompleted = quests.filter(q => q.completed && !get().completedQuestIds.includes(q.id))
         if (newlyCompleted.length > 0) {
-          get().handleQuestCompletion(newlyCompleted)
+          await get().handleQuestCompletion(userId, newlyCompleted)
         }
 
         set({
@@ -121,8 +133,22 @@ export const useGameStore = create(
       addFoodLog: async (userId, entry) => {
         const { data, error } = await foodLogs.add({ user_id: userId, ...entry })
         if (error) throw error
+
+        // Save +15 XP for logging a meal
+        await characters.addXP(userId, 15)
+
+        // Update logging streak
+        await get().updateStreak(userId)
+
+        // Reload logs (which will also handle quest completion XP)
         await get().loadTodayLogs(userId)
-        // Trigger mini XP for logging
+
+        // Refresh character XP from DB so level display is accurate
+        const { data: charData } = await characters.get(userId)
+        if (charData) {
+          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+        }
+
         get().addXPPopup('+15 XP', 'food')
         return data
       },
@@ -134,16 +160,58 @@ export const useGameStore = create(
         await get().loadTodayLogs(userId)
       },
 
-      // ─── Quest completion handler ────────────────────────────────────────
-      handleQuestCompletion: (completedQuests) => {
+      // ─── Quest completion handler — persists XP to DB ────────────────────
+      handleQuestCompletion: async (userId, completedQuests) => {
         const ids = completedQuests.map(q => q.id)
         const xpGained = completedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
+
         set(state => ({
           completedQuestIds: [...state.completedQuestIds, ...ids],
         }))
+
         if (xpGained > 0) {
+          await characters.addXP(userId, xpGained)
           get().addXPPopup(`+${xpGained} XP`, 'quest')
+
+          // Refresh character state from DB
+          const { data: charData } = await characters.get(userId)
+          if (charData) {
+            set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+          }
         }
+      },
+
+      // ─── Update logging streak ───────────────────────────────────────────
+      updateStreak: async (userId) => {
+        const today = getTodayLocal()
+        const current = get().streakData || { logging: 0, protein: 0, budget: 0 }
+        const { data: streakRow } = await streaks.get(userId)
+
+        const lastDate = streakRow?.last_log_date
+        let newLogging = streakRow?.logging || 0
+
+        if (lastDate === today) {
+          // Already logged today — no change
+          return
+        }
+
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA')
+
+        if (lastDate === yesterdayStr) {
+          newLogging += 1  // consecutive day
+        } else if (!lastDate || lastDate < yesterdayStr) {
+          newLogging = 1   // streak broken or first log ever
+        }
+
+        await streaks.upsert(userId, {
+          logging: newLogging,
+          last_log_date: today,
+          updated_at: new Date().toISOString(),
+        })
+
+        set({ streakData: { ...current, logging: newLogging } })
       },
 
       // ─── XP Popup system ─────────────────────────────────────────────────
@@ -158,7 +226,8 @@ export const useGameStore = create(
       // ─── Reset ───────────────────────────────────────────────────────────
       reset: () => set({
         profile: null, character: null, todayLogs: [], quests: [],
-        completedQuestIds: [], streakData: { logging: 0, protein: 0, budget: 0 },
+        completedQuestIds: [], lastQuestDate: null,
+        streakData: { logging: 0, protein: 0, budget: 0 },
         totalXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
       }),
     }),
@@ -166,6 +235,7 @@ export const useGameStore = create(
       name: 'macroquest-game',
       partialize: (state) => ({
         completedQuestIds: state.completedQuestIds,
+        lastQuestDate: state.lastQuestDate,
       }),
     }
   )
