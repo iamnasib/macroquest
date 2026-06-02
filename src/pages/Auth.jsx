@@ -25,8 +25,9 @@ export default function Auth() {
         if (error) throw error
         toast.success('⚔️ Welcome back, Champion!')
       } else {
-        const { error } = await auth.signUp(form.email, form.password, form.username)
+        const { data, error } = await auth.signUp(form.email, form.password, form.username)
         if (error) throw error
+        if (data.user?.identities?.length === 0) throw new Error('Email already in use. Sign in instead.')
         // Bootstrap (profile/character/streaks) happens in onAuthStateChange
         // after email confirmation, using username stored in user_metadata
         toast.success('🐉 Your quest begins! Check email to verify.')
