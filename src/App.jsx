@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore, useGameStore } from './store'
@@ -12,28 +12,49 @@ import Character  from './pages/Character'
 import ARIAPage   from './pages/ARIA'
 import { Spinner } from './components/ui'
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-void flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-4xl mb-4 animate-float">⚔️</div>
+        <Spinner size="lg" />
+        <p className="text-text-muted font-ui text-sm mt-4">Loading realm...</p>
+      </div>
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-void flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-float">⚔️</div>
-          <Spinner size="lg" />
-          <p className="text-text-muted font-ui text-sm mt-4">Loading realm...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingScreen />
   return user ? children : <Navigate to="/auth" replace />
+}
+
+// Requires auth AND a completed onboarding profile
+function OnboardedRoute({ children }) {
+  const { user, loading: authLoading } = useAuthStore()
+  const { profile, profileLoaded, loading: profileLoading, loadProfile } = useGameStore()
+  const fetched = useRef(false)
+
+  useEffect(() => {
+    if (user && !profileLoaded && !profileLoading && !fetched.current) {
+      fetched.current = true
+      loadProfile(user.id)
+    }
+  }, [user, profileLoaded, profileLoading])
+
+  if (authLoading || (user && !profileLoaded)) return <LoadingScreen />
+  if (!user) return <Navigate to="/auth" replace />
+  if (profile && !profile.onboarded) return <Navigate to="/onboarding" replace />
+  return children
 }
 
 function GameLayout({ children }) {
   const { user } = useAuthStore()
-  const { loadProfile } = useGameStore()
+  const { loadProfile, profileLoaded } = useGameStore()
 
   useEffect(() => {
-    if (user) loadProfile(user.id)
+    if (user && !profileLoaded) loadProfile(user.id)
   }, [user?.id])
 
   return <AppLayout>{children}</AppLayout>
@@ -62,11 +83,11 @@ export default function App() {
       <Routes>
         <Route path="/auth"       element={<Auth />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-        <Route path="/dashboard"  element={<ProtectedRoute><GameLayout><Dashboard /></GameLayout></ProtectedRoute>} />
-        <Route path="/log"        element={<ProtectedRoute><GameLayout><FoodLog /></GameLayout></ProtectedRoute>} />
-        <Route path="/quests"     element={<ProtectedRoute><GameLayout><Quests /></GameLayout></ProtectedRoute>} />
-        <Route path="/character"  element={<ProtectedRoute><GameLayout><Character /></GameLayout></ProtectedRoute>} />
-        <Route path="/aria"       element={<ProtectedRoute><GameLayout><ARIAPage /></GameLayout></ProtectedRoute>} />
+        <Route path="/dashboard"  element={<OnboardedRoute><GameLayout><Dashboard /></GameLayout></OnboardedRoute>} />
+        <Route path="/log"        element={<OnboardedRoute><GameLayout><FoodLog /></GameLayout></OnboardedRoute>} />
+        <Route path="/quests"     element={<OnboardedRoute><GameLayout><Quests /></GameLayout></OnboardedRoute>} />
+        <Route path="/character"  element={<OnboardedRoute><GameLayout><Character /></GameLayout></OnboardedRoute>} />
+        <Route path="/aria"       element={<OnboardedRoute><GameLayout><ARIAPage /></GameLayout></OnboardedRoute>} />
         <Route path="*"           element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

@@ -56,6 +56,7 @@ export const useGameStore = create(
       // UI
       xpPopups: [],
       loading: false,
+      profileLoaded: false,
 
       // ─── Load user data ─────────────────────────────────────────────────
       loadProfile: async (userId) => {
@@ -79,6 +80,7 @@ export const useGameStore = create(
             totalXP: character?.total_xp || 0,
             levelData,
             loading: false,
+            profileLoaded: true,
           })
           await get().loadTodayLogs(userId)
         } catch (err) {
@@ -229,6 +231,7 @@ export const useGameStore = create(
         completedQuestIds: [], lastQuestDate: null,
         streakData: { logging: 0, protein: 0, budget: 0 },
         totalXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
+        profileLoaded: false,
       }),
     }),
     {
