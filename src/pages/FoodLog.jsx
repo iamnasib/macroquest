@@ -20,6 +20,7 @@ export default function FoodLog() {
   const [mealType, setMealType] = useState('Lunch')
   const [logging, setLogging] = useState(false)
   const [ariaSuggestion, setAriaSuggestion] = useState(null)
+  const [confirmId, setConfirmId] = useState(null)
   const searchTimeout = useRef(null)
   const previewRef    = useRef(null)
 
@@ -87,34 +88,18 @@ export default function FoodLog() {
     }
   }
 
-  const handleRemove = (logId, name) => {
-    toast((t) => (
-      <div className="flex flex-col gap-2">
-        <p className="font-ui text-sm text-text">Remove <span className="font-semibold">"{name}"</span>?</p>
-        <div className="flex gap-2">
-          <button
-            onClick={async () => {
-              toast.dismiss(t.id)
-              try {
-                await removeFoodLog(user.id, logId)
-                toast.success(`Removed ${name}`)
-              } catch {
-                toast.error('Failed to remove entry.')
-              }
-            }}
-            className="flex-1 py-1.5 rounded bg-rose/20 border border-rose/40 text-rose text-xs font-ui hover:bg-rose/30 transition-colors"
-          >
-            ✕ Remove
-          </button>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="flex-1 py-1.5 rounded border border-border text-text-muted text-xs font-ui hover:border-gold/40 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    ), { duration: 8000 })
+  const handleRemove = async (logId, name) => {
+    if (confirmId !== logId) {
+      setConfirmId(logId)
+      return
+    }
+    setConfirmId(null)
+    try {
+      await removeFoodLog(user.id, logId)
+      toast.success(`Removed ${name}`)
+    } catch {
+      toast.error('Failed to remove entry.')
+    }
   }
 
   const getAriaSuggestion = async () => {
@@ -305,20 +290,37 @@ export default function FoodLog() {
                   <div className="space-y-1.5">
                     {logs.map(log => (
                       <div key={log.id} className="panel-deep p-3 flex items-center justify-between group">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-ui font-semibold text-sm text-text">{log.food_name}</p>
                           <p className="text-xs text-text-muted font-ui">{log.serving_size}g</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <ResourceChip type="energy" amount={Math.round(log.calories)} />
-                          <button
-                            onClick={() => handleRemove(log.id, log.food_name)}
-                            className="text-text-muted hover:text-rose transition-colors text-sm p-1"
-                            aria-label={`Remove ${log.food_name}`}
-                          >
-                            ✕
-                          </button>
-                        </div>
+                        {confirmId === log.id ? (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleRemove(log.id, log.food_name)}
+                              className="py-1 px-2.5 rounded bg-rose/20 border border-rose/40 text-rose text-xs font-ui hover:bg-rose/30 transition-colors"
+                            >
+                              ✕ Remove
+                            </button>
+                            <button
+                              onClick={() => setConfirmId(null)}
+                              className="py-1 px-2.5 rounded border border-border text-text-muted text-xs font-ui hover:border-gold/40 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <ResourceChip type="energy" amount={Math.round(log.calories)} />
+                            <button
+                              onClick={() => handleRemove(log.id, log.food_name)}
+                              className="text-text-muted hover:text-rose transition-colors text-sm p-1"
+                              aria-label={`Remove ${log.food_name}`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
