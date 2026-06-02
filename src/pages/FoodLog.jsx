@@ -10,7 +10,7 @@ const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Pos
 
 export default function FoodLog() {
   const { user } = useAuthStore()
-  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog, loadTodayLogs } = useGameStore()
+  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog } = useGameStore()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -33,10 +33,6 @@ export default function FoodLog() {
   const calorieGoal = profile?.calorie_goal || 2000
   const proteinGoal = profile?.protein_goal || 150
   const remaining   = Math.max(0, proteinGoal - todayTotals.protein)
-
-  useEffect(() => {
-    if (user) loadTodayLogs(user.id)
-  }, [user])
 
   // Debounced search
   useEffect(() => {
@@ -91,14 +87,34 @@ export default function FoodLog() {
     }
   }
 
-  const handleRemove = async (logId, name) => {
-    if (!window.confirm(`Remove "${name}" from today's log?`)) return
-    try {
-      await removeFoodLog(user.id, logId)
-      toast.success(`Removed ${name}`)
-    } catch {
-      toast.error('Failed to remove entry.')
-    }
+  const handleRemove = (logId, name) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <p className="font-ui text-sm text-text">Remove <span className="font-semibold">"{name}"</span>?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id)
+              try {
+                await removeFoodLog(user.id, logId)
+                toast.success(`Removed ${name}`)
+              } catch {
+                toast.error('Failed to remove entry.')
+              }
+            }}
+            className="flex-1 py-1.5 rounded bg-rose/20 border border-rose/40 text-rose text-xs font-ui hover:bg-rose/30 transition-colors"
+          >
+            ✕ Remove
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 py-1.5 rounded border border-border text-text-muted text-xs font-ui hover:border-gold/40 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 8000 })
   }
 
   const getAriaSuggestion = async () => {

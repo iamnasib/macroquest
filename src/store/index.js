@@ -93,6 +93,7 @@ export const useGameStore = create(
       xpPopups: [],
       loading: false,
       profileLoaded: false,
+      loadVersion: 0,
 
       // ─── Load user data ─────────────────────────────────────────────────
       loadProfile: async (userId) => {
@@ -129,6 +130,12 @@ export const useGameStore = create(
       // grantXP:true  → award quest XP if quests newly complete (user action)
       // grantXP:false → update display/tracking only, no XP granted (page load)
       loadTodayLogs: async (userId, { grantXP = true } = {}) => {
+        // Version stamp — if a newer call starts while we're fetching, our
+        // results are stale. We check before applying state to prevent a
+        // slow call from overwriting a faster, more recent one.
+        const myVersion = (get().loadVersion || 0) + 1
+        set({ loadVersion: myVersion })
+
         const today = getTodayLocal()
 
         // Reset daily tracking at the start of a new calendar day
@@ -176,6 +183,9 @@ export const useGameStore = create(
             }))
           }
         }
+
+        // Discard results if a newer loadTodayLogs call has already started
+        if (get().loadVersion !== myVersion) return
 
         set({
           todayLogs: logs,
@@ -372,7 +382,7 @@ export const useGameStore = create(
         completedQuestIds: [], lastQuestDate: null,
         streakData: { logging: 0, protein: 0, budget: 0 },
         totalXP: 0, todayXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
-        profileLoaded: false,
+        profileLoaded: false, loadVersion: 0,
       }),
     }),
     {
