@@ -86,6 +86,7 @@ export const useGameStore = create(
 
       // Character / XP
       totalXP: 0,
+      todayXP: 0,
       levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
 
       // UI
@@ -130,9 +131,9 @@ export const useGameStore = create(
       loadTodayLogs: async (userId, { grantXP = true } = {}) => {
         const today = getTodayLocal()
 
-        // Reset completed quest IDs at the start of a new calendar day
+        // Reset daily tracking at the start of a new calendar day
         if (get().lastQuestDate !== today) {
-          set({ completedQuestIds: [], lastQuestDate: today })
+          set({ completedQuestIds: [], lastQuestDate: today, todayXP: 0 })
         }
 
         // Sync quest completions from DB — cross-device consistency
@@ -191,6 +192,7 @@ export const useGameStore = create(
           total_carbs:      totals.carbs,
           total_fat:        totals.fat,
           quests_completed: completedCount,
+          xp_earned:        get().todayXP,
         })
       },
 
@@ -208,6 +210,7 @@ export const useGameStore = create(
         // +15 XP for logging, boosted by Mage bonus
         const logXP = get().applyXPBonus(15)
         await characters.addXP(userId, logXP)
+        set(state => ({ todayXP: state.todayXP + logXP }))
 
         // Update logging streak
         await get().updateStreak(userId)
@@ -236,6 +239,7 @@ export const useGameStore = create(
         // Reverse the 15 XP that was granted when this food was logged
         const logXP = get().applyXPBonus(15)
         await characters.addXP(userId, -logXP)
+        set(state => ({ todayXP: Math.max(0, state.todayXP - logXP) }))
 
         // Reload quest/log state without granting XP
         await get().loadTodayLogs(userId, { grantXP: false })
@@ -262,6 +266,7 @@ export const useGameStore = create(
           // Reverse the quest XP
           if (xpToRemove > 0) {
             await characters.addXP(userId, -xpToRemove)
+            set(state => ({ todayXP: Math.max(0, state.todayXP - xpToRemove) }))
           }
         }
 
@@ -296,6 +301,7 @@ export const useGameStore = create(
 
         if (xpGained > 0) {
           await characters.addXP(userId, xpGained)
+          set(state => ({ todayXP: state.todayXP + xpGained }))
           get().addXPPopup(`+${xpGained} XP`, 'quest')
 
           // Refresh character state from DB
@@ -363,7 +369,7 @@ export const useGameStore = create(
         profile: null, character: null, todayLogs: [], quests: [],
         completedQuestIds: [], lastQuestDate: null,
         streakData: { logging: 0, protein: 0, budget: 0 },
-        totalXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
+        totalXP: 0, todayXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
         profileLoaded: false,
       }),
     }),

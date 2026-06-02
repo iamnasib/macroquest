@@ -21,7 +21,7 @@ export default function Dashboard() {
   const date    = new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })
 
   useEffect(() => {
-    if (user) loadTodayLogs(user.id)
+    if (user) loadTodayLogs(user.id, { grantXP: false })
   }, [user])
 
   const fetchInsight = async () => {
