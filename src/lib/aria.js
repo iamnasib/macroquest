@@ -1,57 +1,39 @@
-// ─── MacroQuest AI Companion (NVIDIA NIM) ─────────────────────────────────────
-// Powered by NVIDIA NIM — swap model or base URL easily
-// Get your free key at: https://build.nvidia.com
+// ─── MacroQuest AI Companion (NVIDIA NIM via Supabase Edge Function) ──────────
+// Calls NVIDIA NIM server-side to avoid CORS issues and keep API key secure.
+// Model: meta/llama-3.3-70b-instruct
+// Edge Function: supabase/functions/aria/index.ts
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const ARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/aria`
+
+// Still used locally to detect missing setup
 const NVIDIA_API_KEY = import.meta.env.VITE_NVIDIA_API_KEY || 'PLACEHOLDER_NVIDIA_API_KEY'
-const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1'
-const MODEL = 'meta/llama-3.1-70b-instruct'
 
-const COMPANION_PERSONA = `You are ARIA (Adaptive Resource Intelligence Assistant), the AI companion inside MacroQuest — a nutrition RPG.
-
-Your personality:
-- Speak like a wise, encouraging game guide. Mix RPG language with nutritional coaching.
-- Use terms like "resources", "energy points", "Iron Crystals" (protein), "quests", "forge", "champion"
-- Be concise — 2-4 sentences max per response unless asked for a plan
-- Always be positive and action-oriented
-- Reference the user's actual data when provided
-
-MacroQuest resource system:
-- Calories = Energy Points (EP)  
-- Protein = Iron Crystals (Fe)
-- Carbs = Timber (WD)
-- Fats = Gold (AU)
-- Fiber = Stamina Orbs (ST)
-
-Always end with one specific, actionable suggestion.`
-
-// ─── Core AI Call ─────────────────────────────────────────────────────────────
+// ─── Core AI Call (via Edge Function proxy) ───────────────────────────────────
 async function callAI(messages, maxTokens = 300) {
+  // Fall back to mock if key is still placeholder
   if (NVIDIA_API_KEY === 'PLACEHOLDER_NVIDIA_API_KEY') {
     return getMockResponse(messages)
   }
 
-  const res = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+  const res = await fetch(ARIA_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: 'system', content: COMPANION_PERSONA }, ...messages],
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      stream: false,
-    }),
+    body: JSON.stringify({ messages, maxTokens }),
   })
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`ARIA API error: ${err}`)
+    throw new Error(`ARIA proxy error: ${err}`)
   }
 
   const data = await res.json()
-  return data.choices[0]?.message?.content || 'ARIA is gathering data...'
+  if (data.error) throw new Error(data.error)
+  return data.content || 'ARIA is gathering data...'
 }
 
 // ─── Companion Functions ──────────────────────────────────────────────────────
