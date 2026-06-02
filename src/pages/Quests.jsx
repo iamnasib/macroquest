@@ -61,7 +61,7 @@ export default function Quests() {
           {bossUnlocked ? (
             <div>
               <div className="text-5xl mb-3 animate-float">👿</div>
-              <h3 className="font-pixel text-rose mb-2" style={{ fontSize: '0.65rem' }}>
+              <h3 className="font-pixel text-rose mb-2" style={{ fontSize: '0.75rem' }}>
                 THE WEEKEND BOSS
               </h3>
               <p className="text-text-muted font-ui text-sm mb-1">Health: 10,000 / 10,000</p>
@@ -80,7 +80,7 @@ export default function Quests() {
           ) : (
             <div>
               <div className="text-4xl mb-3">🔒</div>
-              <h3 className="font-pixel text-text-muted mb-2" style={{ fontSize: '0.6rem' }}>
+              <h3 className="font-pixel text-text-muted mb-2" style={{ fontSize: '0.75rem' }}>
                 LOCKED — REACH LEVEL {BOSS_UNLOCKS_AT_LEVEL}
               </h3>
               <p className="text-text-muted font-ui text-sm">
@@ -163,7 +163,7 @@ function QuestCard({ quest }) {
 function SectionHeader({ title, sub }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h3 className="font-pixel text-text" style={{ fontSize: '0.6rem' }}>{title}</h3>
+      <h3 className="font-pixel text-text" style={{ fontSize: '0.75rem' }}>{title}</h3>
       {sub && <p className="text-xs text-text-muted font-ui">{sub}</p>}
     </div>
   )

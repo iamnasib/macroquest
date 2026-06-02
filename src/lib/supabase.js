@@ -91,6 +91,15 @@ export const questProgress = {
   upsert: (data) => supabase.from('quest_progress').upsert(data),
 }
 
+// ─── Daily Summaries ─────────────────────────────────────────────────────────
+export const dailySummaries = {
+  upsert: (userId, date, data) =>
+    supabase.from('daily_summaries').upsert(
+      { user_id: userId, summary_date: date, ...data },
+      { onConflict: 'user_id,summary_date' }
+    ),
+}
+
 // ─── Character / XP ───────────────────────────────────────────────────────────
 export const characters = {
   get: (userId) =>

@@ -194,7 +194,7 @@ export default function Onboarding() {
                     className={`p-3 rounded-lg border text-center transition-all ${character === c.id ? 'border-gold/60 bg-gold/10 shadow-glow-sm' : 'border-border hover:border-gold/30'}`}>
                     <div className="text-3xl mb-1">{c.icon}</div>
                     <p className="font-ui text-xs font-semibold text-text">{c.name}</p>
-                    <p className="font-ui text-xs text-text-muted mt-0.5" style={{ fontSize: '0.6rem' }}>{c.desc}</p>
+                    <p className="font-ui text-xs text-text-muted mt-0.5" style={{ fontSize: '0.75rem' }}>{c.desc}</p>
                   </button>
                 ))}
               </div>
@@ -244,7 +244,7 @@ export default function Onboarding() {
 function StepHeader({ icon, title, sub }) {
   return (
     <div className="mb-2">
-      <h2 className="font-pixel text-gold" style={{ fontSize: '0.7rem' }}>{icon} {title}</h2>
+      <h2 className="font-pixel text-gold" style={{ fontSize: '0.8rem' }}>{icon} {title}</h2>
       <p className="text-text-muted font-ui text-sm mt-1">{sub}</p>
     </div>
   )

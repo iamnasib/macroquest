@@ -110,7 +110,7 @@ export function EmptyState({ icon, title, desc, action }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="text-4xl mb-3">{icon}</div>
-      <h3 className="font-pixel text-text mb-2" style={{ fontSize: '0.65rem' }}>{title}</h3>
+      <h3 className="font-pixel text-text mb-2" style={{ fontSize: '0.75rem' }}>{title}</h3>
       <p className="text-text-muted font-ui text-sm max-w-xs mb-4">{desc}</p>
       {action}
     </div>
@@ -160,7 +160,7 @@ export function Modal({ open, onClose, children, title }) {
       >
         {title && (
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="font-pixel text-gold" style={{ fontSize: '0.7rem' }}>{title}</h2>
+            <h2 className="font-pixel text-gold" style={{ fontSize: '0.8rem' }}>{title}</h2>
             <button onClick={onClose} className="text-text-muted hover:text-text transition-colors">✕</button>
           </div>
         )}
