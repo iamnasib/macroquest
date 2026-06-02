@@ -212,11 +212,17 @@ export const useGameStore = create(
         const { error } = await foodLogs.remove(logId)
         if (error) throw error
 
-        // Reverse the logging XP (same amount that was granted, clamped at 0 in DB)
         const logXP = get().applyXPBonus(15)
+
+        // Optimistic update — reflect XP removal in store immediately so
+        // the UI doesn't wait for the DB round-trip to confirm the change.
+        const newTotalXP = Math.max(0, get().totalXP - logXP)
+        set({ totalXP: newTotalXP, levelData: getLevelFromXP(newTotalXP) })
+
         await characters.addXP(userId, -logXP)
         await get().loadTodayLogs(userId)
 
+        // Confirm from DB (reconciles any quest-related XP side-effects)
         const { data: charData } = await characters.get(userId)
         if (charData) {
           set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
