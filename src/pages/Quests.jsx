@@ -1,7 +1,7 @@
 import { useGameStore } from '../store'
 import { QUEST_COLORS } from '../lib/gameEngine'
 import { ProgressBar, ResourceChip, Badge } from '../components/ui'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const BOSS_UNLOCKS_AT_LEVEL = 5
 
@@ -110,13 +110,20 @@ export default function Quests() {
 }
 
 function QuestCard({ quest }) {
+  const navigate = useNavigate()
   const pct = quest.total > 0 ? Math.min((quest.progress / quest.total) * 100, 100) : 0
   const progressText = quest.id === 'calorie_target'
     ? `${Math.round(quest.progress)} / ${quest.total} EP`
     : `${Math.round(quest.progress)} / ${quest.total}`
 
   return (
-    <div className={`quest-card border ${quest.completed ? 'border-emerald/40 bg-emerald/5' : 'border-border'}`}>
+    <div
+      role={quest.completed ? undefined : 'button'}
+      tabIndex={quest.completed ? undefined : 0}
+      onClick={quest.completed ? undefined : () => navigate('/log')}
+      onKeyDown={quest.completed ? undefined : e => e.key === 'Enter' && navigate('/log')}
+      className={`quest-card border ${quest.completed ? 'border-emerald/40 bg-emerald/5 cursor-default' : 'border-border hover:border-gold/40 cursor-pointer'}`}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl">{quest.icon}</span>

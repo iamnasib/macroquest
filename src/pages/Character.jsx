@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore, useGameStore } from '../store'
 import { getLevelTitle, getLevelFromXP, getWorldStage, CHARACTERS, MODES } from '../lib/gameEngine'
 import { ProgressBar, Badge, StatCard } from '../components/ui'
@@ -6,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function Character() {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const { profile, character, levelData, streakData, totalXP, loadProfile } = useGameStore()
   const [selectedChar, setSelectedChar] = useState(character?.character_type || 'warrior')
@@ -178,10 +180,15 @@ export default function Character() {
         </div>
       </div>
 
-      {/* Save button */}
-      <button onClick={handleSave} disabled={saving} className="btn-primary w-full justify-center">
-        {saving ? '⚔️ Saving...' : '💾 Save Character'}
-      </button>
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 justify-center">
+          {saving ? '⚔️ Saving...' : '💾 Save Character'}
+        </button>
+        <button onClick={() => navigate('/onboarding')} className="btn-ghost flex-1 justify-center">
+          ⚙️ Edit Profile Setup
+        </button>
+      </div>
     </div>
   )
 }

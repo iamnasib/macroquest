@@ -110,7 +110,7 @@ export const useGameStore = create(
           fiber:    acc.fiber    + (log.fiber      || 0),
         }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 })
 
-        const resources = nutritionToResources(totals)
+        const resources = nutritionToResources(totals, get().character?.character_type)
         const profile = get().profile
 
         const quests = generateDailyQuests(

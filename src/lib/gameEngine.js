@@ -25,34 +25,30 @@ export const CHARACTERS = [
 ]
 
 // ─── Nutrition → Resource Conversion ─────────────────────────────────────────
-export function nutritionToResources(nutrition) {
+export function nutritionToResources(nutrition, characterType = null) {
   const { calories = 0, protein = 0, carbs = 0, fat = 0, fiber = 0 } = nutrition
   return {
-    energy:  Math.round(calories),
-    iron:    Math.round(protein * 1.5),   // 1g protein = 1.5 iron
-    wood:    Math.round(carbs * 0.8),     // 1g carbs   = 0.8 wood
-    gold:    Math.round(fat * 1.2),       // 1g fat     = 1.2 gold
-    stamina: Math.round(fiber * 3),       // 1g fiber   = 3 stamina
+    energy:  Math.round(calories * (characterType === 'dragon'  ? 1.1 : 1)),
+    iron:    Math.round(protein * 1.5 * (characterType === 'warrior' ? 1.1 : 1)),
+    wood:    Math.round(carbs * 0.8),
+    gold:    Math.round(fat * 1.2 * (characterType === 'robot'   ? 1.1 : 1)),
+    stamina: Math.round(fiber * 3   * (characterType === 'ranger'  ? 1.1 : 1)),
   }
 }
 
 // ─── XP Calculation ───────────────────────────────────────────────────────────
-export function calculateDayXP({ calorieGoal, caloriesConsumed, proteinGoal, proteinConsumed, questsCompleted = 0, streakBonus = 0 }) {
+export function calculateDayXP({ calorieGoal, caloriesConsumed, proteinGoal, proteinConsumed, questsCompleted = 0, streakBonus = 0, characterType = null }) {
   let xp = 0
-  // Base XP for logging
   xp += 50
-  // Calorie adherence (within ±10%)
   const calRatio = caloriesConsumed / calorieGoal
   if (calRatio >= 0.9 && calRatio <= 1.1) xp += 150
   else if (calRatio >= 0.8 && calRatio <= 1.2) xp += 75
-  // Protein goal
   const proRatio = proteinConsumed / proteinGoal
   if (proRatio >= 0.95) xp += 100
   else if (proRatio >= 0.8) xp += 50
-  // Quest XP
   xp += questsCompleted * 75
-  // Streak bonus
-  xp += streakBonus
+  xp += characterType === 'samurai' ? Math.round(streakBonus * 1.15) : streakBonus
+  if (characterType === 'mage') xp = Math.round(xp * 1.1)
   return xp
 }
 
