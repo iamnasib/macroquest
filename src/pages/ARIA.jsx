@@ -75,7 +75,7 @@ export default function ARIAPage() {
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald rounded-full border border-abyss" />
           </div>
           <div>
-            <h2 className="font-pixel text-violet" style={{ fontSize: '0.65rem' }}>ARIA</h2>
+            <h2 className="font-pixel text-violet" style={{ fontSize: '0.75rem' }}>ARIA</h2>
             <p className="text-text-muted font-ui text-xs">Adaptive Resource Intelligence Assistant · Online</p>
           </div>
           <div className="ml-auto text-right hidden sm:block">

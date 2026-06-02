@@ -56,7 +56,7 @@ export default function Character() {
             <div className="w-24 h-24 rounded-full bg-abyss border-2 border-gold/40 flex items-center justify-center text-5xl animate-float shadow-glow">
               {CHARACTERS.find(c => c.id === (character?.character_type || 'warrior'))?.icon || '⚔️'}
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-gold text-void font-pixel px-2 py-0.5 rounded text-xs" style={{ fontSize: '0.45rem' }}>
+            <div className="absolute -bottom-2 -right-2 bg-gold text-void font-pixel px-2 py-0.5 rounded text-xs" style={{ fontSize: '0.75rem' }}>
               LVL {levelData.level}
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function Character() {
 
       {/* ── World Stage ── */}
       <div className="panel p-4">
-        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.6rem' }}>🌍 YOUR WORLD</h3>
+        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.75rem' }}>🌍 YOUR WORLD</h3>
         <div className="flex gap-3 overflow-x-auto pb-2">
           {WORLD_STAGES.map(stage => {
             const unlocked = totalDays >= stage.daysNeeded
@@ -103,7 +103,7 @@ export default function Character() {
                   : 'border-border opacity-40'
               }`}>
                 <div className={`text-3xl mb-1 ${unlocked ? '' : 'grayscale'}`}>{stage.icon}</div>
-                <p className={`font-pixel text-xs mb-0.5 ${unlocked ? 'text-gold' : 'text-text-muted'}`} style={{ fontSize: '0.4rem' }}>
+                <p className={`font-pixel text-xs mb-0.5 ${unlocked ? 'text-gold' : 'text-text-muted'}`} style={{ fontSize: '0.75rem' }}>
                   {stage.name}
                 </p>
                 <p className="font-ui text-xs text-text-muted">Day {stage.daysNeeded}+</p>
@@ -116,7 +116,7 @@ export default function Character() {
 
       {/* ── Choose Character ── */}
       <div className="panel p-4">
-        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.6rem' }}>⚔️ CHOOSE YOUR HERO</h3>
+        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.75rem' }}>⚔️ CHOOSE YOUR HERO</h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {CHARACTERS.map(c => (
             <button
@@ -130,7 +130,7 @@ export default function Character() {
             >
               <div className="text-3xl mb-1">{c.icon}</div>
               <p className="font-ui text-xs font-semibold text-text">{c.name}</p>
-              <p className="font-ui text-xs text-text-muted mt-0.5" style={{ fontSize: '0.6rem' }}>{c.desc}</p>
+              <p className="font-ui text-xs text-text-muted mt-0.5" style={{ fontSize: '0.75rem' }}>{c.desc}</p>
             </button>
           ))}
         </div>
@@ -138,7 +138,7 @@ export default function Character() {
 
       {/* ── Game Mode ── */}
       <div className="panel p-4">
-        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.6rem' }}>🌍 GAME MODE</h3>
+        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.75rem' }}>🌍 GAME MODE</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {Object.values(MODES).map(mode => (
             <button
@@ -160,10 +160,10 @@ export default function Character() {
 
       {/* ── Level roadmap ── */}
       <div className="panel p-4">
-        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.6rem' }}>📈 LEVEL ROADMAP</h3>
+        <h3 className="font-pixel text-text mb-4" style={{ fontSize: '0.75rem' }}>📈 LEVEL ROADMAP</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-3 p-2 bg-gold/10 border border-gold/30 rounded-lg">
-            <span className="font-pixel text-gold w-12 text-center" style={{ fontSize: '0.5rem' }}>LVL {levelData.level}</span>
+            <span className="font-pixel text-gold w-12 text-center" style={{ fontSize: '0.75rem' }}>LVL {levelData.level}</span>
             <div>
               <p className="font-ui font-semibold text-sm text-gold">← YOU ARE HERE</p>
               <p className="font-ui text-xs text-text-muted">{levelTitle}</p>
@@ -171,7 +171,7 @@ export default function Character() {
           </div>
           {nextLevels.map(l => (
             <div key={l.level} className="flex items-center gap-3 p-2 border border-border rounded-lg opacity-60">
-              <span className="font-pixel text-text-muted w-12 text-center" style={{ fontSize: '0.5rem' }}>LVL {l.level}</span>
+              <span className="font-pixel text-text-muted w-12 text-center" style={{ fontSize: '0.75rem' }}>LVL {l.level}</span>
               <div>
                 <p className="font-ui text-sm text-text">{l.title}</p>
               </div>
@@ -185,8 +185,11 @@ export default function Character() {
         <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 justify-center">
           {saving ? '⚔️ Saving...' : '💾 Save Character'}
         </button>
-        <button onClick={() => navigate('/onboarding')} className="btn-ghost flex-1 justify-center">
-          ⚙️ Edit Profile Setup
+        <button
+          onClick={() => navigate('/onboarding')}
+          className="flex-1 justify-center font-pixel text-xs px-6 py-3 rounded border border-gold/40 text-gold hover:border-gold hover:bg-gold/10 active:scale-95 transition-all duration-150 cursor-pointer select-none"
+        >
+          ⚙️ Edit Profile
         </button>
       </div>
     </div>

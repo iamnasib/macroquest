@@ -40,7 +40,7 @@ export default function AppLayout({ children }) {
           <span className="text-2xl shrink-0 animate-float">⚔️</span>
           {!collapsed && (
             <div>
-              <h1 className="font-pixel text-gold glow-text-gold" style={{ fontSize: '0.6rem' }}>
+              <h1 className="font-pixel text-gold glow-text-gold" style={{ fontSize: '0.75rem' }}>
                 MacroQuest
               </h1>
               <p className="text-text-muted font-ui text-xs">Level Up Your Nutrition</p>
@@ -64,7 +64,7 @@ export default function AppLayout({ children }) {
                   <p className="font-ui font-semibold text-text text-sm truncate">
                     {user?.user_metadata?.username || 'Champion'}
                   </p>
-                  <p className="text-xs text-gold font-ui" style={{ fontSize: '0.6rem' }}>
+                  <p className="text-xs text-gold font-ui" style={{ fontSize: '0.75rem' }}>
                     LVL {levelData.level} · {title}
                   </p>
                 </div>
@@ -137,7 +137,7 @@ export default function AppLayout({ children }) {
           <button onClick={() => setSidebarOpen(true)} className="text-text-muted hover:text-gold transition-colors">
             ☰
           </button>
-          <span className="font-pixel text-gold glow-text-gold" style={{ fontSize: '0.55rem' }}>
+          <span className="font-pixel text-gold glow-text-gold" style={{ fontSize: '0.8rem' }}>
             MacroQuest
           </span>
           <span className="text-sm font-ui text-text-muted">LVL {levelData.level}</span>
@@ -155,8 +155,8 @@ function StreakBadge({ icon, label, value }) {
   return (
     <div className="flex-1 bg-deep rounded p-1.5 text-center border border-border">
       <div className="text-sm">{icon}</div>
-      <div className="text-xs font-pixel text-gold" style={{ fontSize: '0.45rem' }}>{value}d</div>
-      <div className="text-xs text-text-muted font-ui" style={{ fontSize: '0.6rem' }}>{label}</div>
+      <div className="text-xs font-pixel text-gold" style={{ fontSize: '0.75rem' }}>{value}d</div>
+      <div className="text-xs text-text-muted font-ui" style={{ fontSize: '0.75rem' }}>{label}</div>
     </div>
   )
 }

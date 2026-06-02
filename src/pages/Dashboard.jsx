@@ -81,7 +81,7 @@ export default function Dashboard() {
           {/* Calories */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-pixel text-gold" style={{ fontSize: '0.55rem' }}>⚡ ENERGY POINTS</span>
+              <span className="text-xs font-pixel text-gold" style={{ fontSize: '0.8rem' }}>⚡ ENERGY POINTS</span>
               <span className="font-ui text-sm text-text font-semibold">
                 {todayTotals.calories.toFixed(0)}
                 <span className="text-text-muted"> / {calorieGoal} EP</span>
@@ -99,7 +99,7 @@ export default function Dashboard() {
           {/* Protein */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-pixel text-iron" style={{ fontSize: '0.55rem' }}>🔩 IRON CRYSTALS</span>
+              <span className="text-xs font-pixel text-iron" style={{ fontSize: '0.8rem' }}>🔩 IRON CRYSTALS</span>
               <span className="font-ui text-sm text-text font-semibold">
                 {todayTotals.protein.toFixed(0)}
                 <span className="text-text-muted">g / {proteinGoal}g</span>
@@ -134,7 +134,7 @@ export default function Dashboard() {
       {/* ── Daily Quests ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-pixel text-text" style={{ fontSize: '0.6rem' }}>⚔️ DAILY QUESTS</h3>
+          <h3 className="font-pixel text-text" style={{ fontSize: '0.75rem' }}>⚔️ DAILY QUESTS</h3>
           <Link to="/quests" className="text-xs text-gold font-ui hover:underline">View all →</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -174,7 +174,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <span className="text-xl">🤖</span>
             <div>
-              <h3 className="font-pixel text-violet" style={{ fontSize: '0.55rem' }}>ARIA COMPANION</h3>
+              <h3 className="font-pixel text-violet" style={{ fontSize: '0.8rem' }}>ARIA COMPANION</h3>
               <p className="text-xs text-text-muted font-ui">AI Quest Guide</p>
             </div>
           </div>
@@ -194,7 +194,7 @@ export default function Dashboard() {
       {/* ── Recent logs ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-pixel text-text" style={{ fontSize: '0.6rem' }}>🍽️ TODAY'S MEALS</h3>
+          <h3 className="font-pixel text-text" style={{ fontSize: '0.75rem' }}>🍽️ TODAY'S MEALS</h3>
           <Link to="/log" className="text-xs text-gold font-ui hover:underline">+ Add food →</Link>
         </div>
         {todayLogs.length === 0 ? (

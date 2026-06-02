@@ -121,7 +121,7 @@ export default function FoodLog() {
         {/* ── Left: Food Search ── */}
         <div className="lg:col-span-3 space-y-4">
           <div>
-            <h2 className="font-pixel text-gold glow-text-gold mb-1" style={{ fontSize: '0.7rem' }}>
+            <h2 className="font-pixel text-gold glow-text-gold mb-1" style={{ fontSize: '0.8rem' }}>
               ⚡ LOG RESOURCES
             </h2>
             <p className="text-text-muted font-ui text-sm">Search or pick common foods</p>
@@ -190,7 +190,7 @@ export default function FoodLog() {
         <div className="lg:col-span-2 space-y-4">
           {/* Daily summary */}
           <div className="panel p-4">
-            <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.55rem' }}>📊 TODAY'S HAUL</h3>
+            <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.8rem' }}>📊 TODAY'S HAUL</h3>
             <div className="space-y-2">
               <MacroRow label="⚡ Energy" value={todayTotals.calories.toFixed(0)} goal={calorieGoal} unit="EP" color="text-gold" />
               <MacroRow label="🔩 Iron"   value={todayTotals.protein.toFixed(1)}  goal={proteinGoal} unit="g"  color="text-iron" />
@@ -214,7 +214,7 @@ export default function FoodLog() {
           {/* Food preview */}
           {selected && (
             <div ref={previewRef} className="panel-deep p-4 pixel-border-gold animate-slide-in">
-              <h3 className="font-pixel text-gold mb-3" style={{ fontSize: '0.55rem' }}>
+              <h3 className="font-pixel text-gold mb-3" style={{ fontSize: '0.8rem' }}>
                 {selected.name}
               </h3>
 
@@ -270,7 +270,7 @@ export default function FoodLog() {
       {/* ── Logged meals ── */}
       {Object.keys(groupedLogs).length > 0 && (
         <div className="mt-6">
-          <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.6rem' }}>🍽️ TODAY'S MEALS</h3>
+          <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.75rem' }}>🍽️ TODAY'S MEALS</h3>
           <div className="space-y-4">
             {Object.entries(groupedLogs).map(([mealType, logs]) => {
               const mealTotals = logs.reduce((a, l) => ({

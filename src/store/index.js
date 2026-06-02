@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase, foodLogs, profiles, streaks, characters } from '../lib/supabase'
+import { supabase, foodLogs, profiles, streaks, characters, dailySummaries } from '../lib/supabase'
 import { nutritionToResources, calculateDayXP, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
 
 function getTodayLocal() {
@@ -128,6 +128,16 @@ export const useGameStore = create(
           todayTotals: totals,
           todayResources: resources,
           quests,
+        })
+
+        // Persist daily snapshot for weekly summaries (fire-and-forget)
+        const completedCount = quests.filter(q => q.completed).length
+        dailySummaries.upsert(userId, today, {
+          total_calories:   totals.calories,
+          total_protein:    totals.protein,
+          total_carbs:      totals.carbs,
+          total_fat:        totals.fat,
+          quests_completed: completedCount,
         })
       },
 
