@@ -7,7 +7,7 @@ import { getDailyInsight } from '../lib/aria'
 
 export default function Dashboard() {
   const { user } = useAuthStore()
-  const { profile, character, todayLogs, todayTotals, todayResources, quests, levelData, streakData, xpPopups, loadTodayLogs } = useGameStore()
+  const { profile, character, todayLogs, todayTotals, todayResources, quests, levelData, streakData, xpPopups } = useGameStore()
   const [ariaInsight, setAriaInsight] = useState(null)
   const [loadingInsight, setLoadingInsight] = useState(false)
 
@@ -19,10 +19,6 @@ export default function Dashboard() {
   const calPct  = Math.min((todayTotals.calories / calorieGoal)  * 100, 100)
   const proPct  = Math.min((todayTotals.protein  / proteinGoal)  * 100, 100)
   const date    = new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })
-
-  useEffect(() => {
-    if (user) loadTodayLogs(user.id, { grantXP: false })
-  }, [user])
 
   const fetchInsight = async () => {
     setLoadingInsight(true)
