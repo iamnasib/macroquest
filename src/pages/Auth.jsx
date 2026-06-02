@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store'
-import { auth, supabase } from '../lib/supabase'
+import { auth } from '../lib/supabase'
 import { Input, Divider, Spinner } from '../components/ui'
 import toast from 'react-hot-toast'
 
@@ -25,10 +25,10 @@ export default function Auth() {
         if (error) throw error
         toast.success('⚔️ Welcome back, Champion!')
       } else {
-        const { data, error } = await auth.signUp(form.email, form.password)
+        const { error } = await auth.signUp(form.email, form.password, form.username)
         if (error) throw error
-        // Create profile + character
-        if (data.user) await bootstrapNewUser(data.user, form.username)
+        // Bootstrap (profile/character/streaks) happens in onAuthStateChange
+        // after email confirmation, using username stored in user_metadata
         toast.success('🐉 Your quest begins! Check email to verify.')
       }
     } catch (err) {
@@ -132,30 +132,6 @@ export default function Auth() {
   )
 }
 
-async function bootstrapNewUser(user, username) {
-  await Promise.all([
-    supabase.from('profiles').insert({
-      id: user.id,
-      username,
-      calorie_goal: 2000,
-      protein_goal: 150,
-      game_mode: 'EMPIRE',
-    }),
-    supabase.from('characters').insert({
-      user_id: user.id,
-      character_type: 'warrior',
-      avatar: '⚔️',
-      total_xp: 0,
-      level: 1,
-    }),
-    supabase.from('streaks').insert({
-      user_id: user.id,
-      logging: 0,
-      protein: 0,
-      budget: 0,
-    }),
-  ])
-}
 
 const FEATURES = [
   'Daily quests & XP', 'Resource system', 'ARIA AI guide',

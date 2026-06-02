@@ -40,6 +40,24 @@ export default function Onboarding() {
   const setStat = (k, v) => setStats(s => ({ ...s, [k]: v }))
   const setGoal = (k, v) => setGoals(g => ({ ...g, [k]: v }))
 
+  const handleNext = () => {
+    if (step === 0) {
+      if (!stats.weight || !stats.height || !stats.age) {
+        return toast.error('Please fill in your weight, height, and age.')
+      }
+      if (Number(stats.weight) <= 0 || Number(stats.height) <= 0 || Number(stats.age) <= 0) {
+        return toast.error('Please enter valid body stats.')
+      }
+    }
+    if (step === 1) {
+      if (!goals.calorieGoal || !goals.proteinGoal ||
+          Number(goals.calorieGoal) <= 0 || Number(goals.proteinGoal) <= 0) {
+        return toast.error('Please set your calorie and protein goals before continuing.')
+      }
+    }
+    setStep(s => s + 1)
+  }
+
   const calcTDEE = () => {
     if (!stats.weight || !stats.height || !stats.age) return
     const result = calculateTDEE({
@@ -228,7 +246,7 @@ export default function Onboarding() {
               <button onClick={() => setStep(s => s - 1)} className="btn-ghost flex-1">← Back</button>
             )}
             {step < STEPS.length - 1 ? (
-              <button onClick={() => setStep(s => s + 1)} className="btn-primary flex-1">Next →</button>
+              <button onClick={handleNext} className="btn-primary flex-1">Next →</button>
             ) : (
               <button onClick={finish} disabled={saving} className="btn-primary flex-1">
                 {saving ? '⚔️ Saving...' : profile?.onboarded ? '💾 Save Changes' : '🐉 Begin Quest'}

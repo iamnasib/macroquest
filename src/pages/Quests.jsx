@@ -169,21 +169,22 @@ function SectionHeader({ title, sub }) {
   )
 }
 
+// XP values match getStreakBonus() in gameEngine.js exactly
 const STREAK_MILESTONES = [
   {
     id: 's3', days: 3, icon: '🌱', title: '3-Day Sprout',
-    rewards: [{ type: 'xp', amount: 150 }, { type: 'gold', amount: 25 }],
+    rewards: [{ type: 'xp', amount: 15 }, { type: 'gold', amount: 25 }],
   },
   {
     id: 's7', days: 7, icon: '⚔️', title: 'Week Warrior',
-    rewards: [{ type: 'xp', amount: 300 }, { type: 'iron', amount: 50 }],
+    rewards: [{ type: 'xp', amount: 30 }, { type: 'iron', amount: 50 }],
   },
   {
     id: 's14', days: 14, icon: '🛡️', title: '2-Week Guardian',
-    rewards: [{ type: 'xp', amount: 600 }, { type: 'gold', amount: 100 }],
+    rewards: [{ type: 'xp', amount: 60 }, { type: 'gold', amount: 100 }],
   },
   {
     id: 's30', days: 30, icon: '👑', title: '30-Day Sovereign',
-    rewards: [{ type: 'xp', amount: 1500 }, { type: 'iron', amount: 200 }, { type: 'gold', amount: 200 }],
+    rewards: [{ type: 'xp', amount: 100 }, { type: 'iron', amount: 200 }, { type: 'gold', amount: 200 }],
   },
 ]

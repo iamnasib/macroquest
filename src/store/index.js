@@ -16,7 +16,42 @@ export const useAuthStore = create((set, get) => ({
   init: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     set({ session, user: session?.user ?? null, loading: false })
-    supabase.auth.onAuthStateChange((_, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      // For new users confirming email, bootstrap their DB rows before
+      // setting user state — prevents loadProfile racing against missing rows.
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userId = session.user.id
+        const { data: existing } = await supabase
+          .from('profiles').select('id').eq('id', userId).single()
+        if (!existing) {
+          const username =
+            session.user.user_metadata?.username ||
+            session.user.email?.split('@')[0] ||
+            'Champion'
+          await Promise.all([
+            supabase.from('profiles').insert({
+              id: userId,
+              username,
+              calorie_goal: 2000,
+              protein_goal: 150,
+              game_mode: 'EMPIRE',
+            }),
+            supabase.from('characters').insert({
+              user_id: userId,
+              character_type: 'warrior',
+              avatar: '⚔️',
+              total_xp: 0,
+              level: 1,
+            }),
+            supabase.from('streaks').insert({
+              user_id: userId,
+              logging: 0,
+              protein: 0,
+              budget: 0,
+            }),
+          ])
+        }
+      }
       set({ session, user: session?.user ?? null })
     })
   },
@@ -242,10 +277,10 @@ export const useGameStore = create(
 
         set({ streakData: { ...current, logging: newLogging } })
 
-        // Grant streak milestone XP whenever the streak increases
-        // Samurai gets +15% on top of the base streak bonus
+        // Grant milestone XP only when the streak hits exactly 3, 7, 14, or 30.
+        // Samurai gets +15% on top of the base bonus.
         const bonus = getStreakBonus(newLogging)
-        if (bonus.xp > 0) {
+        if (bonus.xp > 0 && [3, 7, 14, 30].includes(newLogging)) {
           const charType = get().character?.character_type
           const streakXP = charType === 'samurai' ? Math.round(bonus.xp * 1.15) : bonus.xp
           await characters.addXP(userId, streakXP)
