@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useGameStore } from '../store'
-import { chat, getDailyInsight, getWeeklySummary } from '../lib/aria'
+import { chat } from '../lib/aria'
 import { Spinner } from '../components/ui'
 
 const QUICK_PROMPTS = [

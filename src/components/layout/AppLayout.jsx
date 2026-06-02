@@ -110,10 +110,12 @@ export default function AppLayout({ children }) {
         {/* Streak display */}
         {!collapsed && (
           <div className="p-3 border-t border-border">
-            <div className="flex gap-2">
-              <StreakBadge icon="🔥" label="Log" value={streakData?.logging || 0} />
-              <StreakBadge icon="🔩" label="Pro" value={streakData?.protein || 0} />
-              <StreakBadge icon="⚡" label="Cal" value={streakData?.budget  || 0} />
+            <div className="bg-deep rounded-lg p-2 border border-border flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">🔥</span>
+                <span className="font-pixel text-gold" style={{ fontSize: '0.75rem' }}>{streakData?.logging || 0}d</span>
+              </div>
+              <span className="text-xs text-text-muted font-ui">Logging Streak</span>
             </div>
           </div>
         )}
@@ -151,12 +153,3 @@ export default function AppLayout({ children }) {
   )
 }
 
-function StreakBadge({ icon, label, value }) {
-  return (
-    <div className="flex-1 bg-deep rounded p-1.5 text-center border border-border">
-      <div className="text-sm">{icon}</div>
-      <div className="text-xs font-pixel text-gold" style={{ fontSize: '0.75rem' }}>{value}d</div>
-      <div className="text-xs text-text-muted font-ui" style={{ fontSize: '0.75rem' }}>{label}</div>
-    </div>
-  )
-}

@@ -227,6 +227,9 @@ export const useGameStore = create(
         // Update logging streak
         await get().updateStreak(userId)
 
+        // Show food XP popup first, before quest XP popup fires inside loadTodayLogs
+        get().addXPPopup(`+${logXP} XP`, 'food')
+
         // Reload logs (which will also handle quest completion XP)
         await get().loadTodayLogs(userId)
 
@@ -235,8 +238,6 @@ export const useGameStore = create(
         if (charData) {
           set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
         }
-
-        get().addXPPopup(`+${logXP} XP`, 'food')
         return data
       },
 
