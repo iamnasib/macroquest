@@ -21,6 +21,14 @@ export default function FoodLog() {
   const [logging, setLogging] = useState(false)
   const [ariaSuggestion, setAriaSuggestion] = useState(null)
   const searchTimeout = useRef(null)
+  const previewRef    = useRef(null)
+
+  // On mobile the preview panel is below the search list — scroll to it when food is picked
+  useEffect(() => {
+    if (selected) {
+      setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50)
+    }
+  }, [selected])
 
   const calorieGoal = profile?.calorie_goal || 2000
   const proteinGoal = profile?.protein_goal || 150
@@ -205,7 +213,7 @@ export default function FoodLog() {
 
           {/* Food preview */}
           {selected && (
-            <div className="panel-deep p-4 pixel-border-gold animate-slide-in">
+            <div ref={previewRef} className="panel-deep p-4 pixel-border-gold animate-slide-in">
               <h3 className="font-pixel text-gold mb-3" style={{ fontSize: '0.55rem' }}>
                 {selected.name}
               </h3>

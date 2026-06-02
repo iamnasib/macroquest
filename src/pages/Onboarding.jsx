@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store'
+import { useAuthStore, useGameStore } from '../store'
 import { calculateTDEE } from '../lib/foodApi'
 import { CHARACTERS, MODES } from '../lib/gameEngine'
 import { ProgressBar, Input } from '../components/ui'
@@ -11,6 +11,7 @@ const STEPS = ['Body Stats', 'Set Goals', 'Choose Hero', 'Choose Mode']
 
 export default function Onboarding() {
   const { user } = useAuthStore()
+  const { profile, character: charData, profileLoaded, loadProfile } = useGameStore()
   const navigate  = useNavigate()
   const [step, setStep]   = useState(0)
   const [saving, setSaving] = useState(false)
@@ -20,6 +21,21 @@ export default function Onboarding() {
   const [tdee, setTdee]     = useState(null)
   const [character, setCharacter] = useState('warrior')
   const [gameMode, setGameMode]   = useState('EMPIRE')
+
+  // Pre-fill form when editing an existing profile
+  useEffect(() => {
+    if (!profileLoaded || !profile?.onboarded) return
+    setStats({
+      weight:   profile.weight        || '',
+      height:   profile.height        || '',
+      age:      profile.age           || '',
+      gender:   profile.gender        || 'male',
+      activity: profile.activity_level || 'moderate',
+    })
+    setGoals({ calorieGoal: profile.calorie_goal || '', proteinGoal: profile.protein_goal || '', mode: 'maintain' })
+    setCharacter(charData?.character_type || 'warrior')
+    setGameMode(profile.game_mode || 'EMPIRE')
+  }, [profileLoaded])
 
   const setStat = (k, v) => setStats(s => ({ ...s, [k]: v }))
   const setGoal = (k, v) => setGoals(g => ({ ...g, [k]: v }))
@@ -60,6 +76,7 @@ export default function Onboarding() {
         }).eq('user_id', user.id),
       ])
       toast.success('🐉 Your empire awaits, Champion!')
+      await loadProfile(user.id)
       navigate('/dashboard')
     } catch (err) {
       toast.error('Failed to save profile. ' + err.message)
@@ -214,7 +231,7 @@ export default function Onboarding() {
               <button onClick={() => setStep(s => s + 1)} className="btn-primary flex-1">Next →</button>
             ) : (
               <button onClick={finish} disabled={saving} className="btn-primary flex-1">
-                {saving ? '⚔️ Forging...' : '🐉 Begin Quest'}
+                {saving ? '⚔️ Saving...' : profile?.onboarded ? '💾 Save Changes' : '🐉 Begin Quest'}
               </button>
             )}
           </div>
@@ -234,9 +251,9 @@ function StepHeader({ icon, title, sub }) {
 }
 
 const ACTIVITY_LEVELS = [
-  { id: 'sedentary',   label: 'Sedentary',   desc: 'Desk job, no gym' },
-  { id: 'light',       label: 'Light',       desc: '1-2x gym/week'   },
-  { id: 'moderate',    label: 'Moderate',    desc: '3-5x gym/week'   },
-  { id: 'active',      label: 'Active',      desc: '6-7x gym/week'   },
-  { id: 'very_active', label: 'Very Active', desc: 'Athlete / 2x/day'},
+  { id: 'sedentary',   label: 'Sedentary',   desc: 'Little to no movement'    },
+  { id: 'light',       label: 'Light',       desc: 'Light activity 1-2x/week' },
+  { id: 'moderate',    label: 'Moderate',    desc: 'Active 3-5x/week'         },
+  { id: 'active',      label: 'Active',      desc: 'Intense training daily'   },
+  { id: 'very_active', label: 'Very Active', desc: 'Athlete-level, 2x/day'   },
 ]
