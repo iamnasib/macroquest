@@ -12,6 +12,8 @@ export function ProgressBar({ value, max, color = 'gold', className, showLabel =
     crystal: 'from-crystal to-crystal/70',
     rose:    'from-rose to-rose/70',
     violet:  'from-violet to-violet/70',
+    wood:    'from-wood to-wood/70',
+    amber:   'from-amber to-amber/70',
   }
   return (
     <div className={cn('relative', className)}>
