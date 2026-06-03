@@ -162,20 +162,20 @@ export const COMMON_FOODS = [
   { id: 'mutton',            name: 'Mutton (cooked)',         brand: 'Home',    per100g: { calories: 234, protein: 25,   carbs: 0,    fat: 14,   fiber: 0   }, defaultServing: 150 },
   { id: 'salmon',            name: 'Salmon',                  brand: 'Raw',     per100g: { calories: 208, protein: 20,   carbs: 0,    fat: 13,   fiber: 0   }, defaultServing: 150 },
   { id: 'tuna_canned',       name: 'Tuna (canned)',           brand: 'Generic', per100g: { calories: 116, protein: 26,   carbs: 0,    fat: 1,    fiber: 0   }, defaultServing: 100 },
-  { id: 'paneer',            name: 'Paneer',                  brand: 'Home',    per100g: { calories: 265, protein: 18,   carbs: 3,    fat: 20,   fiber: 0   }, defaultServing: 100 },
+  { id: 'paneer',            name: 'Paneer',                  brand: 'Home',    per100g: { calories: 265, protein: 18,   carbs: 3,    fat: 20,   fiber: 0   }, allergens: ['lactose'], defaultServing: 100 },
   { id: 'tofu',              name: 'Tofu (firm)',             brand: 'Generic', per100g: { calories: 76,  protein: 8,    carbs: 2,    fat: 4,    fiber: 0.3 }, defaultServing: 100 },
   { id: 'soya_chunks',       name: 'Soya Chunks (dry)',       brand: 'Nutrela', per100g: { calories: 345, protein: 52,   carbs: 33,   fat: 0.5,  fiber: 13  }, defaultServing: 50  },
-  { id: 'whey_protein',      name: 'Whey Protein Powder',     brand: 'Generic', per100g: { calories: 375, protein: 80,   carbs: 10,   fat: 3,    fiber: 0   }, defaultServing: 30  },
+  { id: 'whey_protein',      name: 'Whey Protein Powder',     brand: 'Generic', per100g: { calories: 375, protein: 80,   carbs: 10,   fat: 3,    fiber: 0   }, allergens: ['lactose'], defaultServing: 30  },
 
   // ── Dairy ──────────────────────────────────────────────────────────────────
-  { id: 'whole_milk',        name: 'Whole Milk',              brand: 'Dairy',   per100g: { calories: 61,  protein: 3.2,  carbs: 4.8,  fat: 3.3,  fiber: 0   }, defaultServing: 250 },
-  { id: 'skimmed_milk',      name: 'Skimmed Milk',            brand: 'Dairy',   per100g: { calories: 34,  protein: 3.4,  carbs: 4.9,  fat: 0.1,  fiber: 0   }, defaultServing: 250 },
-  { id: 'dahi',              name: 'Curd / Dahi',             brand: 'Home',    per100g: { calories: 61,  protein: 3.5,  carbs: 5,    fat: 3,    fiber: 0   }, defaultServing: 200 },
-  { id: 'greek_yogurt',      name: 'Greek Yogurt',            brand: 'Generic', per100g: { calories: 100, protein: 10,   carbs: 3.6,  fat: 5,    fiber: 0   }, defaultServing: 150 },
-  { id: 'lassi_sweet',       name: 'Lassi (sweet)',           brand: 'Home',    per100g: { calories: 80,  protein: 3.5,  carbs: 10,   fat: 3,    fiber: 0   }, defaultServing: 300 },
+  { id: 'whole_milk',        name: 'Whole Milk',              brand: 'Dairy',   per100g: { calories: 61,  protein: 3.2,  carbs: 4.8,  fat: 3.3,  fiber: 0   }, allergens: ['lactose'], defaultServing: 250 },
+  { id: 'skimmed_milk',      name: 'Skimmed Milk',            brand: 'Dairy',   per100g: { calories: 34,  protein: 3.4,  carbs: 4.9,  fat: 0.1,  fiber: 0   }, allergens: ['lactose'], defaultServing: 250 },
+  { id: 'dahi',              name: 'Curd / Dahi',             brand: 'Home',    per100g: { calories: 61,  protein: 3.5,  carbs: 5,    fat: 3,    fiber: 0   }, allergens: ['lactose'], defaultServing: 200 },
+  { id: 'greek_yogurt',      name: 'Greek Yogurt',            brand: 'Generic', per100g: { calories: 100, protein: 10,   carbs: 3.6,  fat: 5,    fiber: 0   }, allergens: ['lactose'], defaultServing: 150 },
+  { id: 'lassi_sweet',       name: 'Lassi (sweet)',           brand: 'Home',    per100g: { calories: 80,  protein: 3.5,  carbs: 10,   fat: 3,    fiber: 0   }, allergens: ['lactose'], defaultServing: 300 },
   { id: 'ghee',              name: 'Ghee',                    brand: 'Home',    per100g: { calories: 900, protein: 0,    carbs: 0,    fat: 100,  fiber: 0   }, defaultServing: 10  },
   { id: 'butter',            name: 'Butter',                  brand: 'Amul',    per100g: { calories: 717, protein: 0.9,  carbs: 0.1,  fat: 81,   fiber: 0   }, defaultServing: 10  },
-  { id: 'cheddar_cheese',    name: 'Cheddar Cheese',          brand: 'Generic', per100g: { calories: 403, protein: 25,   carbs: 1.3,  fat: 33,   fiber: 0   }, defaultServing: 30  },
+  { id: 'cheddar_cheese',    name: 'Cheddar Cheese',          brand: 'Generic', per100g: { calories: 403, protein: 25,   carbs: 1.3,  fat: 33,   fiber: 0   }, allergens: ['lactose'], defaultServing: 30  },
 
   // ── Rice & Grains ──────────────────────────────────────────────────────────
   { id: 'basmati_rice',      name: 'Basmati Rice (cooked)',   brand: 'Home',    per100g: { calories: 130, protein: 2.7,  carbs: 28,   fat: 0.3,  fiber: 0.4 }, defaultServing: 200 },
@@ -184,19 +184,19 @@ export const COMMON_FOODS = [
   { id: 'oats',              name: 'Oats (dry)',              brand: 'Quaker',  per100g: { calories: 389, protein: 17,   carbs: 66,   fat: 7,    fiber: 11  }, defaultServing: 80  },
   { id: 'quinoa',            name: 'Quinoa (cooked)',         brand: 'Generic', per100g: { calories: 120, protein: 4.4,  carbs: 22,   fat: 1.9,  fiber: 2.8 }, defaultServing: 180 },
   { id: 'poha',              name: 'Poha',                    brand: 'Home',    per100g: { calories: 180, protein: 4,    carbs: 37,   fat: 2,    fiber: 1.5 }, defaultServing: 200 },
-  { id: 'upma',              name: 'Upma',                    brand: 'Home',    per100g: { calories: 160, protein: 4,    carbs: 28,   fat: 4,    fiber: 2   }, defaultServing: 200 },
-  { id: 'cornflakes',        name: 'Cornflakes',              brand: 'Kellogg', per100g: { calories: 357, protein: 7,    carbs: 84,   fat: 0.4,  fiber: 2   }, defaultServing: 40  },
+  { id: 'upma',              name: 'Upma',                    brand: 'Home',    per100g: { calories: 160, protein: 4,    carbs: 28,   fat: 4,    fiber: 2   }, allergens: ['gluten'], defaultServing: 200 },
+  { id: 'cornflakes',        name: 'Cornflakes',              brand: 'Kellogg', per100g: { calories: 357, protein: 7,    carbs: 84,   fat: 0.4,  fiber: 2   }, allergens: ['gluten'], defaultServing: 40  },
 
   // ── Breads ─────────────────────────────────────────────────────────────────
-  { id: 'wheat_roti',        name: 'Wheat Roti',              brand: 'Home',    per100g: { calories: 264, protein: 8,    carbs: 53,   fat: 3,    fiber: 2   }, defaultServing: 40  },
-  { id: 'paratha',           name: 'Paratha (plain)',         brand: 'Home',    per100g: { calories: 300, protein: 6,    carbs: 40,   fat: 13,   fiber: 2   }, defaultServing: 80  },
-  { id: 'aloo_paratha',      name: 'Aloo Paratha',            brand: 'Home',    per100g: { calories: 218, protein: 5,    carbs: 35,   fat: 7,    fiber: 2   }, defaultServing: 130 },
-  { id: 'naan',              name: 'Naan',                    brand: 'Home',    per100g: { calories: 310, protein: 9,    carbs: 56,   fat: 5,    fiber: 2   }, defaultServing: 90  },
-  { id: 'poori',             name: 'Poori',                   brand: 'Home',    per100g: { calories: 336, protein: 5,    carbs: 36,   fat: 19,   fiber: 2   }, defaultServing: 60  },
+  { id: 'wheat_roti',        name: 'Wheat Roti',              brand: 'Home',    per100g: { calories: 264, protein: 8,    carbs: 53,   fat: 3,    fiber: 2   }, allergens: ['gluten'], defaultServing: 40  },
+  { id: 'paratha',           name: 'Paratha (plain)',         brand: 'Home',    per100g: { calories: 300, protein: 6,    carbs: 40,   fat: 13,   fiber: 2   }, allergens: ['gluten'], defaultServing: 80  },
+  { id: 'aloo_paratha',      name: 'Aloo Paratha',            brand: 'Home',    per100g: { calories: 218, protein: 5,    carbs: 35,   fat: 7,    fiber: 2   }, allergens: ['gluten'], defaultServing: 130 },
+  { id: 'naan',              name: 'Naan',                    brand: 'Home',    per100g: { calories: 310, protein: 9,    carbs: 56,   fat: 5,    fiber: 2   }, allergens: ['gluten'], defaultServing: 90  },
+  { id: 'poori',             name: 'Poori',                   brand: 'Home',    per100g: { calories: 336, protein: 5,    carbs: 36,   fat: 19,   fiber: 2   }, allergens: ['gluten'], defaultServing: 60  },
   { id: 'idli',              name: 'Idli',                    brand: 'Home',    per100g: { calories: 58,  protein: 2,    carbs: 12,   fat: 0.3,  fiber: 0.5 }, defaultServing: 150 },
   { id: 'dosa',              name: 'Dosa (plain)',            brand: 'Home',    per100g: { calories: 168, protein: 3.7,  carbs: 26,   fat: 5,    fiber: 0.7 }, defaultServing: 100 },
-  { id: 'white_bread',       name: 'White Bread',             brand: 'Generic', per100g: { calories: 265, protein: 9,    carbs: 49,   fat: 3.3,  fiber: 2.7 }, defaultServing: 50  },
-  { id: 'brown_bread',       name: 'Brown Bread',             brand: 'Generic', per100g: { calories: 247, protein: 9,    carbs: 41,   fat: 3.5,  fiber: 6   }, defaultServing: 50  },
+  { id: 'white_bread',       name: 'White Bread',             brand: 'Generic', per100g: { calories: 265, protein: 9,    carbs: 49,   fat: 3.3,  fiber: 2.7 }, allergens: ['gluten'], defaultServing: 50  },
+  { id: 'brown_bread',       name: 'Brown Bread',             brand: 'Generic', per100g: { calories: 247, protein: 9,    carbs: 41,   fat: 3.5,  fiber: 6   }, allergens: ['gluten'], defaultServing: 50  },
 
   // ── Dals & Legumes ─────────────────────────────────────────────────────────
   { id: 'dal_makhani',       name: 'Dal Makhani',             brand: 'Home',    per100g: { calories: 110, protein: 6,    carbs: 15,   fat: 3,    fiber: 3   }, defaultServing: 200 },
@@ -208,9 +208,9 @@ export const COMMON_FOODS = [
   { id: 'chhole',            name: 'Chhole / Chickpea Curry', brand: 'Home',    per100g: { calories: 164, protein: 8.9,  carbs: 27,   fat: 2.6,  fiber: 7.6 }, defaultServing: 200 },
 
   // ── Indian Dishes ──────────────────────────────────────────────────────────
-  { id: 'palak_paneer',      name: 'Palak Paneer',            brand: 'Home',    per100g: { calories: 158, protein: 8,    carbs: 8,    fat: 11,   fiber: 2   }, defaultServing: 200 },
+  { id: 'palak_paneer',      name: 'Palak Paneer',            brand: 'Home',    per100g: { calories: 158, protein: 8,    carbs: 8,    fat: 11,   fiber: 2   }, allergens: ['lactose'], defaultServing: 200 },
   { id: 'aloo_gobi',         name: 'Aloo Gobi',               brand: 'Home',    per100g: { calories: 95,  protein: 2.5,  carbs: 12,   fat: 4.5,  fiber: 2.5 }, defaultServing: 200 },
-  { id: 'samosa',            name: 'Samosa',                  brand: 'Snack',   per100g: { calories: 262, protein: 4,    carbs: 30,   fat: 14,   fiber: 2   }, defaultServing: 100 },
+  { id: 'samosa',            name: 'Samosa',                  brand: 'Snack',   per100g: { calories: 262, protein: 4,    carbs: 30,   fat: 14,   fiber: 2   }, allergens: ['gluten'], defaultServing: 100 },
   { id: 'pakoda',            name: 'Pakoda',                  brand: 'Snack',   per100g: { calories: 325, protein: 7,    carbs: 34,   fat: 18,   fiber: 3   }, defaultServing: 100 },
 
   // ── Vegetables ─────────────────────────────────────────────────────────────
@@ -242,6 +242,17 @@ export const COMMON_FOODS = [
   { id: 'dark_chocolate',    name: 'Dark Chocolate (70%)',    brand: 'Generic', per100g: { calories: 600, protein: 7,    carbs: 46,   fat: 43,   fiber: 11  }, defaultServing: 30  },
   { id: 'sweet_corn',        name: 'Sweet Corn (cooked)',     brand: 'Home',    per100g: { calories: 108, protein: 3.4,  carbs: 25,   fat: 1.3,  fiber: 2.8 }, defaultServing: 150 },
 ]
+
+// ─── Allergen / Diet Filter ───────────────────────────────────────────────────
+// Filters COMMON_FOODS by allergen tags. API results use name-based heuristics
+// in FoodLog.jsx since external data has no allergen metadata.
+export function filterFoodsByConditions(foods, healthConditions = []) {
+  const blocked = new Set()
+  if (healthConditions.includes('lactose_intolerance')) blocked.add('lactose')
+  if (healthConditions.includes('gluten_intolerance'))  blocked.add('gluten')
+  if (blocked.size === 0) return foods
+  return foods.filter(f => !f.allergens?.some(a => blocked.has(a)))
+}
 
 // ─── TDEE / Goal Calculator ───────────────────────────────────────────────────
 export function calculateTDEE({

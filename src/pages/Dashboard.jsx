@@ -15,6 +15,7 @@ export default function Dashboard() {
   const proteinGoal = profile?.protein_goal || 150
   const carbGoal    = profile?.carb_goal    || null
   const fatGoal     = profile?.fat_goal     || null
+  const fiberGoal   = profile?.health_conditions?.includes('hypertension') ? 25 : null
   const totalDays   = streakData?.logging || 0
   const worldStage  = getWorldStage(totalDays)
 
@@ -26,14 +27,16 @@ export default function Dashboard() {
     setLoadingInsight(true)
     try {
       const insight = await getDailyInsight({
-        calories:    todayTotals.calories,
-        protein:     todayTotals.protein,
-        carbs:       todayTotals.carbs,
-        fat:         todayTotals.fat,
+        calories:         todayTotals.calories,
+        protein:          todayTotals.protein,
+        carbs:            todayTotals.carbs,
+        fat:              todayTotals.fat,
         calorieGoal,
         proteinGoal,
-        streakDays:  streakData?.logging || 0,
-        level:       levelData.level,
+        streakDays:       streakData?.logging || 0,
+        level:            levelData.level,
+        healthConditions: profile?.health_conditions || [],
+        dietType:         profile?.diet_type || 'omnivore',
       })
       setAriaInsight(insight)
     } finally {
@@ -117,7 +120,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border">
           <MacroMini label="🪵 Timber"  value={todayTotals.carbs.toFixed(0)} goal={carbGoal} unit="g" color="wood"  />
           <MacroMini label="✨ Gold"    value={todayTotals.fat.toFixed(0)}   goal={fatGoal}  unit="g" color="amber" />
-          <MacroMini label="💎 Stamina" value={todayTotals.fiber.toFixed(0)} unit="g" />
+          <MacroMini label="💎 Stamina" value={todayTotals.fiber.toFixed(0)} goal={fiberGoal} unit="g" color="emerald" />
         </div>
       </div>
 
