@@ -7,53 +7,33 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const ARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/aria`;
 
-const COMPANION_PERSONA = `You are ARIA (Adaptive Resource Intelligence Assistant), the AI companion inside MacroQuest — a nutrition RPG.
-
-Your personality:
-- Speak like a wise, encouraging game guide. Mix RPG language with nutritional coaching.
-- Use terms like "resources", "energy points", "Iron Crystals" (protein), "quests", "forge", "champion"
-- Be concise — 2-4 sentences max per response unless asked for a plan
-- Always be positive and action-oriented
-- Reference the user's actual data when provided
-
-MacroQuest resource system:
-- Calories = Energy Points (EP)
-- Protein = Iron Crystals (Fe)
-- Carbs = Timber (WD)
-- Fats = Gold (AU)
-- Fiber = Stamina Orbs (ST)
-
-Always end with one specific, actionable suggestion.`
-
 // ─── Core AI Call (via Edge Function proxy) ───────────────────────────────────
 async function callAI(messages, maxTokens = 300) {
-  const withSystem = [
-    { role: 'system', content: COMPANION_PERSONA },
-    ...messages,
-  ];
-
   // Fall back to mock when no Supabase project is configured
   if (!SUPABASE_URL || SUPABASE_URL.includes('placeholder')) {
-    return getMockResponse(messages);
+    return getMockResponse(messages)
   }
 
   const res = await fetch(ARIA_ENDPOINT, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify({messages: withSystem, maxTokens}),
-  });
+    // System prompt is added server-side in the edge function — don't send it
+    // from the client to avoid duplication and allow server-side control.
+    body: JSON.stringify({ messages, maxTokens }),
+  })
 
+  if (res.status === 429) throw new Error('RATE_LIMIT')
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`ARIA proxy error: ${err}`);
+    const err = await res.text()
+    throw new Error(`ARIA proxy error: ${err}`)
   }
 
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.content || "ARIA is gathering data...";
+  const data = await res.json()
+  if (data.error) throw new Error(data.error)
+  return data.content || 'ARIA is gathering data...'
 }
 
 // ─── Companion Functions ──────────────────────────────────────────────────────

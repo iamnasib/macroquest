@@ -21,6 +21,7 @@ export default function FoodLog() {
   const [logging, setLogging] = useState(false)
   const [ariaSuggestion, setAriaSuggestion] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
+  const [noResults, setNoResults] = useState(false)
   const searchTimeout = useRef(null)
   const searchVersion = useRef(0)
   const previewRef    = useRef(null)
@@ -38,9 +39,10 @@ export default function FoodLog() {
 
   // Debounced search
   useEffect(() => {
-    if (query.length < 2) {
+    if (query.length < 3) {
       searchVersion.current++
       setSearching(false)
+      setNoResults(false)
       setResults(COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8))
       return
     }
@@ -48,12 +50,21 @@ export default function FoodLog() {
     searchTimeout.current = setTimeout(async () => {
       const version = ++searchVersion.current
       setSearching(true)
+      setNoResults(false)
       const res = await searchFoods(query)
       if (version !== searchVersion.current) return
       const sorted = rankResults(res, query)
-      setResults(sorted.length > 0 ? sorted : COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6))
+      const localFallback = COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6)
+      if (sorted.length > 0) {
+        setResults(sorted)
+      } else if (localFallback.length > 0) {
+        setResults(localFallback)
+      } else {
+        setResults([])
+        setNoResults(true)
+      }
       setSearching(false)
-    }, 500)
+    }, 800)
     return () => clearTimeout(searchTimeout.current)
   }, [query])
 
@@ -165,7 +176,14 @@ export default function FoodLog() {
                 <Spinner size="sm" /> Searching the food forge...
               </div>
             )}
-            {!searching && results.map(food => (
+            {!searching && noResults && (
+              <div className="text-center py-8 space-y-1">
+                <p className="text-3xl">🔍</p>
+                <p className="font-ui text-sm text-text-muted">No results for "{query}"</p>
+                <p className="font-ui text-xs text-text-muted/60">Try a shorter or different name (e.g. "chicken" instead of "grilled chicken breast")</p>
+              </div>
+            )}
+            {!searching && !noResults && results.map(food => (
               <button
                 key={food.id}
                 onClick={() => { setSelected(food); setServing(food.defaultServing || 100) }}

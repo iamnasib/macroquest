@@ -67,13 +67,15 @@ export default function ARIAPage() {
         ...prev,
         {role: "assistant", content: response, ts: Date.now()},
       ]);
-    } catch {
+    } catch (err) {
+      const isRateLimit = err.message === 'RATE_LIMIT'
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content:
-            "⚠️ Connection to ARIA interrupted. Please try again in a moment.",
+          content: isRateLimit
+            ? "⚠️ Your ARIA connection has reached its daily capacity. Champions are limited to **20 requests per day** to keep the realm stable. Your quota resets at midnight — return then and we shall continue the quest!"
+            : "⚠️ Connection to ARIA interrupted. Please try again in a moment.",
           ts: Date.now(),
         },
       ]);
