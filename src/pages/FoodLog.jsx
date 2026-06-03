@@ -51,14 +51,28 @@ export default function FoodLog() {
       const version = ++searchVersion.current
       setSearching(true)
       setNoResults(false)
-      const res = await searchFoods(query)
+
+      const apiResults = await searchFoods(query)
       if (version !== searchVersion.current) return
-      const sorted = rankResults(res, query)
-      const localFallback = COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6)
-      if (sorted.length > 0) {
-        setResults(sorted)
-      } else if (localFallback.length > 0) {
-        setResults(localFallback)
+
+      const q = query.toLowerCase()
+
+      // Local curated foods always shown first — instant, accurate, Indian-focused
+      const localMatches = COMMON_FOODS
+        .filter(f => f.name.toLowerCase().includes(q))
+        .sort((a, b) => {
+          const an = a.name.toLowerCase()
+          const bn = b.name.toLowerCase()
+          const score = n => n === q ? 2 : n.startsWith(q) ? 1 : 0
+          return score(bn) - score(an)
+        })
+
+      // API results ranked by relevance, appended after local matches
+      const combined = [...localMatches, ...rankResults(apiResults, query)]
+
+      if (combined.length > 0) {
+        setResults(combined.slice(0, 25))
+        setNoResults(false)
       } else {
         setResults([])
         setNoResults(true)
