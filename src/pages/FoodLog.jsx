@@ -22,6 +22,7 @@ export default function FoodLog() {
   const [ariaSuggestion, setAriaSuggestion] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const searchTimeout = useRef(null)
+  const searchVersion = useRef(0)
   const previewRef    = useRef(null)
 
   // On mobile the preview panel is below the search list — scroll to it when food is picked
@@ -38,14 +39,19 @@ export default function FoodLog() {
   // Debounced search
   useEffect(() => {
     if (query.length < 2) {
+      searchVersion.current++
+      setSearching(false)
       setResults(COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8))
       return
     }
     clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(async () => {
+      const version = ++searchVersion.current
       setSearching(true)
       const res = await searchFoods(query)
-      setResults(res.length > 0 ? res : COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6))
+      if (version !== searchVersion.current) return
+      const sorted = rankResults(res, query)
+      setResults(sorted.length > 0 ? sorted : COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6))
       setSearching(false)
     }, 500)
     return () => clearTimeout(searchTimeout.current)
@@ -352,4 +358,16 @@ function NutrientCard({ icon, label, value, unit, color }) {
       <p className={`font-ui font-bold text-sm ${color}`}>{typeof value === 'number' ? value.toFixed(1) : value}{unit}</p>
     </div>
   )
+}
+
+function rankResults(results, query) {
+  const q = query.toLowerCase().trim()
+  const score = (name) => {
+    const n = name.toLowerCase()
+    if (n === q)           return 3
+    if (n.startsWith(q))   return 2
+    if (n.includes(` ${q}`)) return 1  // word boundary match (e.g. "raw banana")
+    return 0
+  }
+  return [...results].sort((a, b) => score(b.name) - score(a.name))
 }
