@@ -3,8 +3,9 @@
 // Model: meta/llama-3.3-70b-instruct
 // Edge Function: supabase/functions/aria/index.ts
 
+import { supabase } from './supabase'
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const ARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/aria`;
 
 // ─── Core AI Call (via Edge Function proxy) ───────────────────────────────────
@@ -14,14 +15,19 @@ async function callAI(messages, maxTokens = 300) {
     return getMockResponse(messages)
   }
 
+  // Use the user's session token — the edge function calls auth.getUser()
+  // to identify the caller for rate limiting. The anon key has no sub claim
+  // and getUser() would return null, causing a 401.
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
   const res = await fetch(ARIA_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${token}`,
     },
-    // System prompt is added server-side in the edge function — don't send it
-    // from the client to avoid duplication and allow server-side control.
     body: JSON.stringify({ messages, maxTokens }),
   })
 
