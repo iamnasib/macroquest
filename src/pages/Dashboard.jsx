@@ -13,6 +13,8 @@ export default function Dashboard() {
 
   const calorieGoal = profile?.calorie_goal || 2000
   const proteinGoal = profile?.protein_goal || 150
+  const carbGoal    = profile?.carb_goal    || null
+  const fatGoal     = profile?.fat_goal     || null
   const totalDays   = streakData?.logging || 0
   const worldStage  = getWorldStage(totalDays)
 
@@ -113,8 +115,8 @@ export default function Dashboard() {
 
         {/* Secondary macros */}
         <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border">
-          <MacroMini label="🪵 Timber" value={todayTotals.carbs.toFixed(0)} unit="g" />
-          <MacroMini label="✨ Gold"   value={todayTotals.fat.toFixed(0)}   unit="g" />
+          <MacroMini label="🪵 Timber"  value={todayTotals.carbs.toFixed(0)} goal={carbGoal} unit="g" color="wood"  />
+          <MacroMini label="✨ Gold"    value={todayTotals.fat.toFixed(0)}   goal={fatGoal}  unit="g" color="amber" />
           <MacroMini label="💎 Stamina" value={todayTotals.fiber.toFixed(0)} unit="g" />
         </div>
       </div>
@@ -226,11 +228,20 @@ export default function Dashboard() {
   )
 }
 
-function MacroMini({ label, value, unit }) {
+function MacroMini({ label, value, goal, unit, color = 'gold' }) {
   return (
     <div className="text-center bg-abyss rounded p-2">
       <p className="text-xs text-text-muted font-ui mb-0.5">{label}</p>
-      <p className="font-ui font-bold text-text text-sm">{value}<span className="text-text-muted text-xs">{unit}</span></p>
+      <p className="font-ui font-bold text-text text-sm">
+        {value}
+        {goal
+          ? <span className="text-text-muted text-xs"> / {goal}{unit}</span>
+          : <span className="text-text-muted text-xs">{unit}</span>
+        }
+      </p>
+      {goal && (
+        <ProgressBar value={Number(value)} max={goal} color={color} className="mt-1.5" />
+      )}
     </div>
   )
 }

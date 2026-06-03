@@ -244,11 +244,21 @@ export const COMMON_FOODS = [
 ]
 
 // ─── TDEE / Goal Calculator ───────────────────────────────────────────────────
-export function calculateTDEE({ weight, height, age, gender, activityLevel }) {
-  // Mifflin-St Jeor BMR
-  const bmr = gender === 'male'
-    ? 10 * weight + 6.25 * height - 5 * age + 5
-    : 10 * weight + 6.25 * height - 5 * age - 161
+export function calculateTDEE({
+  weight, height, age, gender, activityLevel,
+  bodyFatPct = null, healthConditions = [], dietType = 'omnivore',
+}) {
+  let bmr
+  if (bodyFatPct && bodyFatPct > 0 && bodyFatPct < 70) {
+    // Katch-McArdle: more accurate when body composition is known
+    const lbm = weight * (1 - bodyFatPct / 100)
+    bmr = 370 + 21.6 * lbm
+  } else {
+    // Mifflin-St Jeor (default)
+    bmr = gender === 'male'
+      ? 10 * weight + 6.25 * height - 5 * age + 5
+      : 10 * weight + 6.25 * height - 5 * age - 161
+  }
 
   const multipliers = {
     sedentary:   1.2,
@@ -258,15 +268,37 @@ export function calculateTDEE({ weight, height, age, gender, activityLevel }) {
     very_active: 1.9,
   }
 
-  const tdee = Math.round(bmr * (multipliers[activityLevel] || 1.55))
+  let tdee = Math.round(bmr * (multipliers[activityLevel] || 1.55))
+
+  // Hypothyroidism: metabolic rate reduced ~5%
+  if (healthConditions.includes('hypothyroidism')) {
+    tdee = Math.round(tdee * 0.95)
+  }
+
+  // Protein: standard 2g/kg; vegan 1.8g/kg (lower bioavailability); kidney disease 0.8g/kg
+  let proteinPerKg = dietType === 'vegan' ? 1.8 : 2.0
+  if (healthConditions.includes('kidney_disease')) proteinPerKg = 0.8
+  const proteinGoal = Math.round(weight * proteinPerKg)
+
+  // Carb/fat split as % of TDEE — adjusted by health conditions
+  let carbPct = 0.45
+  let fatPct  = 0.25
+  if (healthConditions.includes('diabetes') || healthConditions.includes('pcos')) {
+    carbPct = 0.35  // lower carbs for insulin resistance
+    fatPct  = 0.30
+  }
+  if (healthConditions.includes('high_cholesterol')) {
+    fatPct = 0.20  // reduce fat exposure
+  }
+
   return {
     bmr:              Math.round(bmr),
     tdee,
     bulkCalories:     tdee + 300,
     cutCalories:      tdee - 400,
     maintainCalories: tdee,
-    proteinGoal:      Math.round(weight * 2.0),
-    carbGoal:         Math.round((tdee * 0.45) / 4),
-    fatGoal:          Math.round((tdee * 0.25) / 9),
+    proteinGoal,
+    carbGoal:         Math.round((tdee * carbPct) / 4),
+    fatGoal:          Math.round((tdee * fatPct)  / 9),
   }
 }

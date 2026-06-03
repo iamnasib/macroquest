@@ -54,7 +54,7 @@ function OnboardedRoute({children}) {
 
   if (authLoading || (user && !profileLoaded)) return <LoadingScreen />;
   if (!user) return <Navigate to='/auth' replace />;
-  if (profile && !profile.onboarded)
+  if (!profile || !profile.onboarded)
     return <Navigate to='/onboarding' replace />;
   return children;
 }
