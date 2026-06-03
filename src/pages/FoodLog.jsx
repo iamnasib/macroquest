@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuthStore, useGameStore } from '../store'
-import { searchFoods, calculateServing, COMMON_FOODS } from '../lib/foodApi'
+import { searchFoods, calculateServing, COMMON_FOODS, filterFoodsByConditions } from '../lib/foodApi'
 import { nutritionToResources } from '../lib/gameEngine'
 import { ResourceChip, Input, Modal, ProgressBar, Spinner, EmptyState } from '../components/ui'
 import { getSuggestion } from '../lib/aria'
@@ -22,6 +22,7 @@ export default function FoodLog() {
   const [ariaSuggestion, setAriaSuggestion] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [noResults, setNoResults] = useState(false)
+  const [filterEnabled, setFilterEnabled] = useState(true)
   const searchTimeout = useRef(null)
   const searchVersion = useRef(0)
   const previewRef    = useRef(null)
@@ -37,13 +38,20 @@ export default function FoodLog() {
   const proteinGoal = profile?.protein_goal || 150
   const remaining   = Math.max(0, proteinGoal - todayTotals.protein)
 
-  // Debounced search
+  const userConditions     = profile?.health_conditions || []
+  const hasAllergenFilter  = userConditions.includes('lactose_intolerance') || userConditions.includes('gluten_intolerance')
+  const effectiveConditions = filterEnabled ? userConditions : []
+
+  // Debounced search — re-runs when query or filter toggle changes
   useEffect(() => {
     if (query.length < 3) {
       searchVersion.current++
       setSearching(false)
       setNoResults(false)
-      setResults(COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8))
+      const base = query
+        ? COMMON_FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase()))
+        : COMMON_FOODS
+      setResults(filterFoodsByConditions(base, effectiveConditions).slice(0, query ? 8 : 10))
       return
     }
     clearTimeout(searchTimeout.current)
@@ -57,18 +65,21 @@ export default function FoodLog() {
 
       const q = query.toLowerCase()
 
-      // Local curated foods always shown first — instant, accurate, Indian-focused
-      const localMatches = COMMON_FOODS
-        .filter(f => f.name.toLowerCase().includes(q))
-        .sort((a, b) => {
-          const an = a.name.toLowerCase()
-          const bn = b.name.toLowerCase()
-          const score = n => n === q ? 2 : n.startsWith(q) ? 1 : 0
-          return score(bn) - score(an)
-        })
+      // Local curated foods first — filtered by allergens via tagged metadata
+      const localMatches = filterFoodsByConditions(
+        COMMON_FOODS
+          .filter(f => f.name.toLowerCase().includes(q))
+          .sort((a, b) => {
+            const an = a.name.toLowerCase()
+            const bn = b.name.toLowerCase()
+            const score = n => n === q ? 2 : n.startsWith(q) ? 1 : 0
+            return score(bn) - score(an)
+          }),
+        effectiveConditions
+      )
 
-      // API results ranked by relevance, appended after local matches
-      const combined = [...localMatches, ...rankResults(apiResults, query)]
+      // API results filtered by name keywords (no allergen metadata available)
+      const combined = [...localMatches, ...applyKeywordFilter(rankResults(apiResults, query), effectiveConditions)]
 
       if (combined.length > 0) {
         setResults(combined.slice(0, 25))
@@ -80,10 +91,7 @@ export default function FoodLog() {
       setSearching(false)
     }, 800)
     return () => clearTimeout(searchTimeout.current)
-  }, [query])
-
-  // Show common foods initially
-  useEffect(() => { setResults(COMMON_FOODS.slice(0, 10)) }, [])
+  }, [query, filterEnabled])
 
   const preview = selected ? calculateServing(selected, serving) : null
   const previewResources = preview ? nutritionToResources(preview, character?.character_type) : null
@@ -134,7 +142,12 @@ export default function FoodLog() {
   }
 
   const getAriaSuggestion = async () => {
-    const suggestion = await getSuggestion({ remaining, type: 'protein' })
+    const suggestion = await getSuggestion({
+      remaining,
+      type: 'protein',
+      healthConditions: profile?.health_conditions || [],
+      dietType: profile?.diet_type || 'omnivore',
+    })
     setAriaSuggestion(suggestion)
   }
 
@@ -182,6 +195,25 @@ export default function FoodLog() {
               </button>
             ))}
           </div>
+
+          {/* Active allergen filter chips */}
+          {hasAllergenFilter && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-text-muted font-ui">Filtering:</span>
+              {filterEnabled && userConditions.includes('lactose_intolerance') && (
+                <span className="resource-chip bg-rose/15 text-rose text-xs px-2 py-0.5">🥛 No Lactose</span>
+              )}
+              {filterEnabled && userConditions.includes('gluten_intolerance') && (
+                <span className="resource-chip bg-amber/15 text-amber text-xs px-2 py-0.5">🌾 No Gluten</span>
+              )}
+              <button
+                onClick={() => setFilterEnabled(f => !f)}
+                className="text-xs font-ui text-text-muted hover:text-gold transition-colors underline"
+              >
+                {filterEnabled ? 'Show all foods' : 'Apply filter'}
+              </button>
+            </div>
+          )}
 
           {/* Results */}
           <div className="space-y-2">
@@ -402,4 +434,18 @@ function rankResults(results, query) {
     return 0
   }
   return [...results].sort((a, b) => score(b.name) - score(a.name))
+}
+
+// Name-based heuristic filter for API results that have no allergen metadata
+const LACTOSE_KEYWORDS = ['milk', 'cheese', 'yogurt', 'cream', 'curd', 'lassi', 'paneer', 'whey', 'dahi']
+const GLUTEN_KEYWORDS  = ['wheat', 'bread', 'roti', 'naan', 'paratha', 'atta', 'maida', 'semolina', 'flour']
+
+function applyKeywordFilter(foods, conditions) {
+  if (!conditions?.length) return foods
+  return foods.filter(food => {
+    const name = food.name.toLowerCase()
+    if (conditions.includes('lactose_intolerance') && LACTOSE_KEYWORDS.some(k => name.includes(k))) return false
+    if (conditions.includes('gluten_intolerance')  && GLUTEN_KEYWORDS.some(k => name.includes(k)))  return false
+    return true
+  })
 }

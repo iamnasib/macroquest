@@ -53,7 +53,14 @@ export async function getDailyInsight({
   proteinGoal,
   streakDays,
   level,
+  healthConditions = [],
+  dietType = 'omnivore',
 }) {
+  const conditionText = healthConditions.length > 0
+    ? `\n- Health conditions: ${healthConditions.map(c => c.replace(/_/g, ' ')).join(', ')}`
+    : ''
+  const dietText = dietType !== 'omnivore' ? `\n- Diet: ${dietType}` : ''
+
   const messages = [
     {
       role: "user",
@@ -63,19 +70,27 @@ export async function getDailyInsight({
 - Timber (carbs): ${carbs}g
 - Gold (fats): ${fat}g
 - Current streak: ${streakDays} days
-- My level: ${level}
+- My level: ${level}${conditionText}${dietText}
 
-Give me a daily insight and what I should focus on for the rest of the day.`,
+Give me a daily insight and what I should focus on for the rest of the day. Factor in my health conditions and diet when suggesting foods or adjustments.`,
     },
   ];
   return callAI(messages);
 }
 
-export async function getSuggestion({remaining, type, userGoals}) {
+export async function getSuggestion({ remaining, type, userGoals, healthConditions = [], dietType = 'omnivore' }) {
+  const restrictions = []
+  if (dietType === 'vegan') restrictions.push('vegan')
+  else if (dietType === 'vegetarian') restrictions.push('vegetarian')
+  if (healthConditions.includes('lactose_intolerance')) restrictions.push('no dairy')
+  if (healthConditions.includes('gluten_intolerance'))  restrictions.push('no gluten')
+  if (healthConditions.includes('kidney_disease'))      restrictions.push('low protein foods only')
+  const restrictText = restrictions.length > 0 ? ` (${restrictions.join(', ')})` : ''
+
   const messages = [
     {
       role: "user",
-      content: `I need ${remaining}${type === "protein" ? "g more Iron Crystals (protein)" : " more Energy Points (calories)"} to complete today's quest. Suggest 2-3 specific Indian/Kashmiri food options that would help. Keep it practical.`,
+      content: `I need ${remaining}${type === "protein" ? "g more Iron Crystals (protein)" : " more Energy Points (calories)"} to complete today's quest. Suggest 2-3 specific Indian/Kashmiri food options that would help${restrictText}. Keep it practical.`,
     },
   ];
   return callAI(messages, 200);
