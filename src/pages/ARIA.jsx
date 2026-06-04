@@ -1,7 +1,13 @@
-import {useState, useRef, useEffect} from "react";
-import {useGameStore} from "../store";
-import {chat} from "../lib/aria";
-import {Spinner} from "../components/ui";
+import { useState, useRef, useEffect } from 'react'
+import { useAuthStore, useGameStore } from '../store'
+import { chat, getWeeklySummary } from '../lib/aria'
+import { dailySummaries } from '../lib/supabase'
+import { Spinner } from '../components/ui'
+
+function addDaysStr(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d + n).toLocaleDateString('en-CA')
+}
 
 const QUICK_PROMPTS = [
   {
@@ -31,7 +37,12 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ARIAPage() {
+  const { user } = useAuthStore()
   const {todayTotals, profile, levelData, streakData} = useGameStore();
+  const [weeklyOpen, setWeeklyOpen] = useState(false)
+  const [weeklyData, setWeeklyData] = useState(null)
+  const [weeklyReport, setWeeklyReport] = useState(null)
+  const [weeklyLoading, setWeeklyLoading] = useState(false)
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -48,6 +59,37 @@ export default function ARIAPage() {
     bottomRef.current?.scrollIntoView({behavior: "smooth"});
   }, [messages]);
 
+  useEffect(() => {
+    if (!weeklyOpen || weeklyData !== null || !user?.id) return
+    setWeeklyLoading(true)
+    dailySummaries.getWeekly(user.id).then(({ data }) => {
+      setWeeklyData(data || [])
+      setWeeklyLoading(false)
+    })
+  }, [weeklyOpen, user?.id])
+
+  const generateWeeklyReport = async () => {
+    if (!weeklyData) return
+    setWeeklyLoading(true)
+    try {
+      const daysLogged = weeklyData.length
+      const avgProtein = daysLogged > 0
+        ? Math.round(weeklyData.reduce((s, d) => s + d.total_protein, 0) / daysLogged)
+        : 0
+      const totalXP = weeklyData.reduce((s, d) => s + (d.xp_earned || 0), 0)
+      const questsCompleted = weeklyData.reduce((s, d) => s + (d.quests_completed || 0), 0)
+      const report = await getWeeklySummary({
+        weekData: { daysLogged, avgProtein },
+        totalXP,
+        questsCompleted,
+        streakDays: streakData?.logging || 0,
+      })
+      setWeeklyReport(report)
+    } finally {
+      setWeeklyLoading(false)
+    }
+  }
+
   const sendMessage = async (text) => {
     const msg = text || input.trim();
     if (!msg || loading) return;
@@ -61,7 +103,9 @@ export default function ARIAPage() {
       const history = messages
         .slice(-6)
         .map((m) => ({role: m.role, content: m.content}));
-      const contextMsg = `[Context: Level ${levelData.level}, Calories today: ${todayTotals.calories}/${profile?.calorie_goal || 2000} EP, Protein: ${todayTotals.protein}g/${profile?.protein_goal || 150}g, Streak: ${streakData?.logging || 0} days]\n\n${msg}`;
+      const conditions = profile?.health_conditions?.length ? `, Conditions: ${profile.health_conditions.join(', ')}` : ''
+      const diet = profile?.diet_type && profile.diet_type !== 'omnivore' ? `, Diet: ${profile.diet_type}` : ''
+      const contextMsg = `[Context: Level ${levelData.level}, Calories today: ${todayTotals.calories}/${profile?.calorie_goal || 2000} EP, Protein: ${todayTotals.protein}g/${profile?.protein_goal || 150}g, Streak: ${streakData?.logging || 0} days${conditions}${diet}]\n\n${msg}`;
       const response = await chat(contextMsg, history);
       setMessages((prev) => [
         ...prev,
@@ -113,12 +157,20 @@ export default function ARIAPage() {
               Adaptive Resource Intelligence Assistant · Online
             </p>
           </div>
-          <div className='ml-auto text-right hidden sm:block'>
-            <p className='font-ui text-xs text-text-muted'>Today's intel:</p>
-            <p className='font-ui text-xs text-gold'>
-              {todayTotals.calories.toFixed(0)} EP ·{" "}
-              {todayTotals.protein.toFixed(0)}g Iron
-            </p>
+          <div className='ml-auto flex items-center gap-3'>
+            <div className='text-right hidden sm:block'>
+              <p className='font-ui text-xs text-text-muted'>Today's intel:</p>
+              <p className='font-ui text-xs text-gold'>
+                {todayTotals.calories.toFixed(0)} EP ·{" "}
+                {todayTotals.protein.toFixed(0)}g Iron
+              </p>
+            </div>
+            <button
+              onClick={() => { setWeeklyOpen(o => !o); setWeeklyReport(null) }}
+              className={`text-xs font-ui px-3 py-1.5 rounded border transition-all ${weeklyOpen ? 'border-violet/60 bg-violet/10 text-violet' : 'border-border text-text-muted hover:border-violet/40 hover:text-violet'}`}
+            >
+              📊 Week
+            </button>
           </div>
         </div>
 
@@ -135,6 +187,69 @@ export default function ARIAPage() {
           ))}
         </div>
       </div>
+
+      {/* Weekly Report Panel */}
+      {weeklyOpen && (
+        <div className='border-t border-border bg-abyss/60 p-4 shrink-0'>
+          {weeklyLoading && !weeklyData ? (
+            <div className='flex items-center gap-2 text-text-muted font-ui text-sm'>
+              <Spinner size='sm' /> Loading weekly data...
+            </div>
+          ) : weeklyData ? (
+            <div>
+              {/* 7-day grid */}
+              <div className='flex gap-1.5 mb-3'>
+                {Array.from({ length: 7 }, (_, i) => {
+                  const today = new Date().toLocaleDateString('en-CA')
+                  const dateStr = addDaysStr(today, i - 6)
+                  const dayData = weeklyData.find(d => d.summary_date === dateStr)
+                  const [y, m, d] = dateStr.split('-').map(Number)
+                  const dayName = new Date(y, m - 1, d).toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 2)
+                  return (
+                    <div key={dateStr} className='flex-1 flex flex-col items-center gap-1'>
+                      <span className='text-xs text-text-muted font-ui'>{dayName}</span>
+                      <div className={`w-full h-6 rounded ${dayData ? 'bg-gold/40 border border-gold/60' : 'bg-deep border border-border/40'}`} />
+                      {dayData && <span className='text-xs text-gold font-ui leading-none'>{Math.round(dayData.total_calories)}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Stats row */}
+              <div className='grid grid-cols-3 gap-2 text-center mb-3'>
+                <div>
+                  <p className='text-xs text-text-muted font-ui'>Days logged</p>
+                  <p className='font-ui font-bold text-gold text-sm'>{weeklyData.length}/7</p>
+                </div>
+                <div>
+                  <p className='text-xs text-text-muted font-ui'>Avg protein</p>
+                  <p className='font-ui font-bold text-iron text-sm'>
+                    {weeklyData.length > 0 ? Math.round(weeklyData.reduce((s, d) => s + d.total_protein, 0) / weeklyData.length) : 0}g
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs text-text-muted font-ui'>Quests done</p>
+                  <p className='font-ui font-bold text-emerald text-sm'>
+                    {weeklyData.reduce((s, d) => s + (d.quests_completed || 0), 0)}
+                  </p>
+                </div>
+              </div>
+              {weeklyReport ? (
+                <div className='bg-panel border border-violet/20 rounded-lg p-3'>
+                  <MessageContent content={weeklyReport} />
+                </div>
+              ) : (
+                <button
+                  onClick={generateWeeklyReport}
+                  disabled={weeklyLoading}
+                  className='w-full btn-ghost text-xs py-2'
+                >
+                  {weeklyLoading ? '...' : '⚔️ Generate Battle Report'}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Messages */}
       <div className='flex-1 overflow-y-auto p-4 space-y-4'>

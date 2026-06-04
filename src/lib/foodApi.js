@@ -241,6 +241,8 @@ export const COMMON_FOODS = [
   // ── Other ──────────────────────────────────────────────────────────────────
   { id: 'dark_chocolate',    name: 'Dark Chocolate (70%)',    brand: 'Generic', per100g: { calories: 600, protein: 7,    carbs: 46,   fat: 43,   fiber: 11  }, defaultServing: 30  },
   { id: 'sweet_corn',        name: 'Sweet Corn (cooked)',     brand: 'Home',    per100g: { calories: 108, protein: 3.4,  carbs: 25,   fat: 1.3,  fiber: 2.8 }, defaultServing: 150 },
+  { id: 'alpino_oats_coffee',    name: 'Alpino Oats Classic Coffee',          brand: 'Alpino', per100g: { calories: 394, protein: 24,  carbs: 43,  fat: 14,  fiber: 4  }, defaultServing: 40  },
+  { id: 'airfried_chicken_ghee', name: 'Air Fried Chicken Breast (oil/ghee)', brand: 'Home',   per100g: { calories: 175, protein: 31,  carbs: 0,   fat: 5,   fiber: 0  }, defaultServing: 150 },
 ]
 
 // ─── Allergen / Diet Filter ───────────────────────────────────────────────────

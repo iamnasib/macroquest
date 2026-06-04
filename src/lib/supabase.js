@@ -63,6 +63,8 @@ export const foodLogs = {
 
   add: (entry) => supabase.from('food_logs').insert(entry).select().single(),
 
+  update: (id, data) => supabase.from('food_logs').update(data).eq('id', id).select().single(),
+
   remove: (id) => supabase.from('food_logs').delete().eq('id', id),
 
   getDailySummary: (userId, date) =>
@@ -111,6 +113,19 @@ export const dailySummaries = {
       { user_id: userId, summary_date: date, ...data },
       { onConflict: 'user_id,summary_date' }
     ),
+
+  getWeekly: (userId) => {
+    const now = new Date()
+    const today = now.toLocaleDateString('en-CA')
+    const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).toLocaleDateString('en-CA')
+    return supabase
+      .from('daily_summaries')
+      .select('summary_date,total_calories,total_protein,quests_completed,xp_earned')
+      .eq('user_id', userId)
+      .gte('summary_date', sevenDaysAgo)
+      .lte('summary_date', today)
+      .order('summary_date', { ascending: true })
+  },
 }
 
 // ─── Character / XP ───────────────────────────────────────────────────────────

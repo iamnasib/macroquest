@@ -293,6 +293,45 @@ export const useGameStore = create(
         }
       },
 
+      // ─── Edit food log (today only) — updates nutrition + cascades XP ───
+      editFoodLog: async (userId, logId, { serving_size, meal_type, calories, protein, carbs, fat, fiber }) => {
+        const questsBefore = get().quests.filter(q => q.completed)
+
+        const { error } = await foodLogs.update(logId, {
+          serving_size, meal_type, calories, protein, carbs, fat, fiber,
+        })
+        if (error) throw error
+
+        await get().loadTodayLogs(userId, { grantXP: true })
+
+        // Check which quests this edit just un-completed
+        const questsAfter = get().quests
+        const uncompletedQuests = questsBefore.filter(qb =>
+          !questsAfter.find(qa => qa.id === qb.id && qa.completed)
+        )
+
+        if (uncompletedQuests.length > 0) {
+          const baseXP = uncompletedQuests.reduce((sum, q) => sum + (q.reward?.xp || 0), 0)
+          const xpToRemove = get().applyXPBonus(baseXP)
+          const ids = uncompletedQuests.map(q => q.id)
+
+          set(state => ({
+            completedQuestIds: state.completedQuestIds.filter(id => !ids.includes(id)),
+          }))
+          await questProgress.deleteForDate(userId, ids, getTodayLocal())
+
+          if (xpToRemove > 0) {
+            await characters.addXP(userId, -xpToRemove)
+            set(state => ({ todayXP: Math.max(0, state.todayXP - xpToRemove) }))
+          }
+        }
+
+        const { data: charData } = await characters.get(userId)
+        if (charData) {
+          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+        }
+      },
+
       // ─── Quest completion handler — persists XP and quest state to DB ───
       handleQuestCompletion: async (userId, completedQuests) => {
         const ids = completedQuests.map(q => q.id)
