@@ -112,7 +112,7 @@ export default function ARIAPage() {
         {role: "assistant", content: response, ts: Date.now()},
       ]);
     } catch (err) {
-      const isRateLimit = err.message === 'RATE_LIMIT'
+      const isRateLimit = err.message === "RATE_LIMIT";
       setMessages((prev) => [
         ...prev,
         {
@@ -320,7 +320,7 @@ export default function ARIAPage() {
           </button>
         </div>
         <p className='text-xs text-text-muted font-ui mt-1.5 text-center'>
-          Powered by NVIDIA NIM · Enter to send · Shift+Enter for new line
+          20 requests per day · AI can make mistakes.
         </p>
       </div>
     </div>
