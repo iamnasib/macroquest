@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuthStore, useGameStore } from '../store'
 import { searchFoods, calculateServing, COMMON_FOODS, filterFoodsByConditions } from '../lib/foodApi'
 import { nutritionToResources } from '../lib/gameEngine'
+import { foodLogs as foodLogsApi } from '../lib/supabase'
 import { ResourceChip, Input, Modal, ProgressBar, Spinner, EmptyState } from '../components/ui'
 import { getSuggestion } from '../lib/aria'
 import toast from 'react-hot-toast'
@@ -10,7 +11,7 @@ const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Pos
 
 export default function FoodLog() {
   const { user } = useAuthStore()
-  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog } = useGameStore()
+  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog, editFoodLog } = useGameStore()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -23,9 +24,41 @@ export default function FoodLog() {
   const [confirmId, setConfirmId] = useState(null)
   const [noResults, setNoResults] = useState(false)
   const [filterEnabled, setFilterEnabled] = useState(true)
+  // Date navigation state
+  const [viewDate, setViewDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [pastLogs, setPastLogs] = useState([])
+  const [pastLoading, setPastLoading] = useState(false)
+  // Inline edit state
+  const [editingId, setEditingId] = useState(null)
+  const [editServing, setEditServing] = useState(100)
+  const [editMealType, setEditMealType] = useState('Lunch')
+  const [editSaving, setEditSaving] = useState(false)
   const searchTimeout = useRef(null)
   const searchVersion = useRef(0)
   const previewRef    = useRef(null)
+
+  const today = new Date().toLocaleDateString('en-CA')
+  const isToday = viewDate === today
+
+  // Computed display state — switches between live store state and fetched past logs
+  const displayLogs = isToday ? todayLogs : pastLogs
+  const displayTotals = isToday ? todayTotals : pastLogs.reduce((acc, log) => ({
+    calories: acc.calories + (log.calories || 0),
+    protein:  acc.protein  + (log.protein  || 0),
+    carbs:    acc.carbs    + (log.carbs    || 0),
+    fat:      acc.fat      + (log.fat      || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+
+  // Fetch past logs when viewDate changes
+  useEffect(() => {
+    if (isToday) { setPastLogs([]); return }
+    if (!user?.id) return
+    setPastLoading(true)
+    foodLogsApi.getByDate(user.id, viewDate).then(({ data }) => {
+      setPastLogs(data || [])
+      setPastLoading(false)
+    })
+  }, [viewDate, user?.id])
 
   // On mobile the preview panel is below the search list — scroll to it when food is picked
   useEffect(() => {
@@ -141,6 +174,45 @@ export default function FoodLog() {
     }
   }
 
+  const startEdit = (log) => {
+    setEditingId(log.id)
+    setEditServing(log.serving_size)
+    setEditMealType(log.meal_type || 'Lunch')
+    setConfirmId(null)
+  }
+
+  const saveEdit = async () => {
+    if (!editingId || editServing < 1) return
+    const log = todayLogs.find(l => l.id === editingId)
+    if (!log) return
+    const per100g = {
+      calories: log.serving_size > 0 ? (log.calories / log.serving_size) * 100 : 0,
+      protein:  log.serving_size > 0 ? (log.protein  / log.serving_size) * 100 : 0,
+      carbs:    log.serving_size > 0 ? (log.carbs    / log.serving_size) * 100 : 0,
+      fat:      log.serving_size > 0 ? (log.fat      / log.serving_size) * 100 : 0,
+      fiber:    log.serving_size > 0 ? (log.fiber    / log.serving_size) * 100 : 0,
+    }
+    const updated = calculateServing({ per100g }, editServing)
+    setEditSaving(true)
+    try {
+      await editFoodLog(user.id, editingId, {
+        serving_size: editServing,
+        meal_type: editMealType,
+        calories: updated.calories,
+        protein:  updated.protein,
+        carbs:    updated.carbs,
+        fat:      updated.fat,
+        fiber:    updated.fiber,
+      })
+      setEditingId(null)
+      toast.success('✅ Entry updated!')
+    } catch {
+      toast.error('Failed to update entry.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const getAriaSuggestion = async () => {
     const suggestion = await getSuggestion({
       remaining,
@@ -151,8 +223,8 @@ export default function FoodLog() {
     setAriaSuggestion(suggestion)
   }
 
-  // Group logs by meal type
-  const groupedLogs = todayLogs.reduce((acc, log) => {
+  // Group logs by meal type — uses displayLogs so it works for past dates too
+  const groupedLogs = displayLogs.reduce((acc, log) => {
     const type = log.meal_type || 'Other'
     if (!acc[type]) acc[type] = []
     acc[type].push(log)
@@ -339,19 +411,67 @@ export default function FoodLog() {
       </div>
 
       {/* ── Logged meals ── */}
-      {Object.keys(groupedLogs).length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.75rem' }}>🍽️ TODAY'S MEALS</h3>
+      <div className="mt-6">
+        {/* Date navigation */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => { if (canGoBack(viewDate)) { setViewDate(addDays(viewDate, -1)); setEditingId(null) } }}
+            disabled={!canGoBack(viewDate)}
+            className="p-1.5 rounded border border-border text-text-muted hover:border-gold/40 hover:text-gold disabled:opacity-30 disabled:cursor-not-allowed transition-all font-ui text-sm"
+          >
+            ←
+          </button>
+          <div className="text-center">
+            <h3 className="font-pixel text-text" style={{ fontSize: '0.75rem' }}>
+              {isToday ? '🍽️ TODAY\'S MEALS' : `📅 ${formatViewDate(viewDate)}`}
+            </h3>
+            {!isToday && (
+              <button
+                onClick={() => { setViewDate(today); setEditingId(null) }}
+                className="text-xs text-gold font-ui hover:underline mt-0.5"
+              >
+                Back to today
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => { if (!isToday) { setViewDate(addDays(viewDate, 1)); setEditingId(null) } }}
+            disabled={isToday}
+            className="p-1.5 rounded border border-border text-text-muted hover:border-gold/40 hover:text-gold disabled:opacity-30 disabled:cursor-not-allowed transition-all font-ui text-sm"
+          >
+            →
+          </button>
+        </div>
+
+        {/* Logs content */}
+        {pastLoading ? (
+          <div className="flex items-center justify-center py-8 gap-2 text-text-muted font-ui text-sm">
+            <Spinner size="sm" /> Loading past logs...
+          </div>
+        ) : Object.keys(groupedLogs).length === 0 ? (
+          isToday ? (
+            <EmptyState
+              icon="🏕️"
+              title="NO MEALS LOGGED YET"
+              desc="Search for a food above to start logging."
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-3xl">📜</p>
+              <p className="font-ui text-sm text-text-muted mt-2">No meals logged on this day</p>
+            </div>
+          )
+        ) : (
           <div className="space-y-4">
-            {Object.entries(groupedLogs).map(([mealType, logs]) => {
+            {Object.entries(groupedLogs).map(([mt, logs]) => {
               const mealTotals = logs.reduce((a, l) => ({
                 calories: a.calories + l.calories,
                 protein: a.protein + l.protein,
               }), { calories: 0, protein: 0 })
               return (
-                <div key={mealType}>
+                <div key={mt}>
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-ui font-semibold text-sm text-text-muted uppercase tracking-widest text-xs">{mealType}</h4>
+                    <h4 className="font-ui font-semibold text-text-muted uppercase tracking-widest text-xs">{mt}</h4>
                     <div className="flex gap-2">
                       <span className="text-xs text-gold font-ui">⚡{Math.round(mealTotals.calories)} EP</span>
                       <span className="text-xs text-iron font-ui">🔩{mealTotals.protein.toFixed(0)}g</span>
@@ -359,47 +479,175 @@ export default function FoodLog() {
                   </div>
                   <div className="space-y-1.5">
                     {logs.map(log => (
-                      <div key={log.id} className="panel-deep p-3 flex items-center justify-between group">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-ui font-semibold text-sm text-text">{log.food_name}</p>
-                          <p className="text-xs text-text-muted font-ui">{log.serving_size}g</p>
+                      editingId === log.id ? (
+                        <EditLogCard
+                          key={log.id}
+                          log={log}
+                          editServing={editServing}
+                          setEditServing={setEditServing}
+                          editMealType={editMealType}
+                          setEditMealType={setEditMealType}
+                          editSaving={editSaving}
+                          onSave={saveEdit}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <div key={log.id} className="panel-deep p-3 flex items-center justify-between group">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-ui font-semibold text-sm text-text">{log.food_name}</p>
+                            <p className="text-xs text-text-muted font-ui">{log.serving_size}g · {log.meal_type}</p>
+                          </div>
+                          {isToday ? (
+                            confirmId === log.id ? (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => handleRemove(log.id, log.food_name)}
+                                  className="py-1 px-2.5 rounded bg-rose/20 border border-rose/40 text-rose text-xs font-ui hover:bg-rose/30 transition-colors"
+                                >
+                                  ✕ Remove
+                                </button>
+                                <button
+                                  onClick={() => setConfirmId(null)}
+                                  className="py-1 px-2.5 rounded border border-border text-text-muted text-xs font-ui hover:border-gold/40 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <ResourceChip type="energy" amount={Math.round(log.calories)} />
+                                <button
+                                  onClick={() => startEdit(log)}
+                                  className="text-text-muted hover:text-gold transition-colors text-sm p-1"
+                                  aria-label={`Edit ${log.food_name}`}
+                                  title="Edit"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  onClick={() => handleRemove(log.id, log.food_name)}
+                                  className="text-text-muted hover:text-rose transition-colors text-sm p-1"
+                                  aria-label={`Remove ${log.food_name}`}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <ResourceChip type="energy" amount={Math.round(log.calories)} />
+                              <span className="text-xs text-text-muted font-ui">🔩{log.protein?.toFixed(0)}g</span>
+                            </div>
+                          )}
                         </div>
-                        {confirmId === log.id ? (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={() => handleRemove(log.id, log.food_name)}
-                              className="py-1 px-2.5 rounded bg-rose/20 border border-rose/40 text-rose text-xs font-ui hover:bg-rose/30 transition-colors"
-                            >
-                              ✕ Remove
-                            </button>
-                            <button
-                              onClick={() => setConfirmId(null)}
-                              className="py-1 px-2.5 rounded border border-border text-text-muted text-xs font-ui hover:border-gold/40 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <ResourceChip type="energy" amount={Math.round(log.calories)} />
-                            <button
-                              onClick={() => handleRemove(log.id, log.food_name)}
-                              className="text-text-muted hover:text-rose transition-colors text-sm p-1"
-                              aria-label={`Remove ${log.food_name}`}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      )
                     ))}
                   </div>
                 </div>
               )
             })}
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d + n).toLocaleDateString('en-CA')
+}
+
+function canGoBack(viewDate) {
+  const today = new Date().toLocaleDateString('en-CA')
+  const [ty, tm, td] = today.split('-').map(Number)
+  const [vy, vm, vd] = viewDate.split('-').map(Number)
+  const diff = new Date(ty, tm - 1, td) - new Date(vy, vm - 1, vd)
+  return diff < 30 * 24 * 60 * 60 * 1000
+}
+
+function formatViewDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function EditLogCard({ log, editServing, setEditServing, editMealType, setEditMealType, editSaving, onSave, onCancel }) {
+  const per100g = {
+    calories: log.serving_size > 0 ? (log.calories / log.serving_size) * 100 : 0,
+    protein:  log.serving_size > 0 ? (log.protein  / log.serving_size) * 100 : 0,
+    carbs:    log.serving_size > 0 ? (log.carbs    / log.serving_size) * 100 : 0,
+    fat:      log.serving_size > 0 ? (log.fat      / log.serving_size) * 100 : 0,
+    fiber:    log.serving_size > 0 ? (log.fiber    / log.serving_size) * 100 : 0,
+  }
+  const preview = calculateServing({ per100g }, editServing)
+  return (
+    <div className="panel-deep p-3 border border-gold/30 animate-slide-in">
+      <p className="font-ui font-semibold text-sm text-gold mb-3">{log.food_name}</p>
+      <div className="mb-3">
+        <label className="text-xs text-text-muted font-ui mb-1 block">Serving Size (g)</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEditServing(s => Math.max(10, s - 25))}
+            className="w-7 h-7 rounded border border-border text-text-muted hover:border-gold hover:text-gold transition-colors"
+          >−</button>
+          <input
+            type="number"
+            value={editServing}
+            onChange={e => setEditServing(Number(e.target.value))}
+            className="flex-1 bg-abyss border border-border rounded px-2 py-1 text-center text-sm font-ui text-text focus:outline-none focus:border-gold/60"
+            min="1"
+          />
+          <button
+            onClick={() => setEditServing(s => s + 25)}
+            className="w-7 h-7 rounded border border-border text-text-muted hover:border-gold hover:text-gold transition-colors"
+          >+</button>
         </div>
-      )}
+      </div>
+      <div className="flex gap-1.5 flex-wrap mb-3">
+        {MEAL_TYPES.map(t => (
+          <button
+            key={t}
+            onClick={() => setEditMealType(t)}
+            className={`text-xs font-ui px-2 py-1 rounded border transition-all ${
+              editMealType === t
+                ? 'border-gold bg-gold/10 text-gold'
+                : 'border-border text-text-muted hover:border-gold/40'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
+        <div className="bg-abyss rounded p-1.5 text-center">
+          <p className="text-xs text-text-muted font-ui">⚡ EP</p>
+          <p className="font-ui font-bold text-xs text-gold">{preview.calories.toFixed(0)}</p>
+        </div>
+        <div className="bg-abyss rounded p-1.5 text-center">
+          <p className="text-xs text-text-muted font-ui">🔩 Iron</p>
+          <p className="font-ui font-bold text-xs text-iron">{preview.protein.toFixed(1)}g</p>
+        </div>
+        <div className="bg-abyss rounded p-1.5 text-center">
+          <p className="text-xs text-text-muted font-ui">🪵</p>
+          <p className="font-ui font-bold text-xs text-amber">{preview.carbs.toFixed(0)}g</p>
+        </div>
+        <div className="bg-abyss rounded p-1.5 text-center">
+          <p className="text-xs text-text-muted font-ui">✨</p>
+          <p className="font-ui font-bold text-xs text-amber">{preview.fat.toFixed(1)}g</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onSave}
+          disabled={editSaving || editServing < 1}
+          className="btn-primary text-xs py-1.5 flex-1 justify-center"
+        >
+          {editSaving ? '...' : '✓ Save'}
+        </button>
+        <button onClick={onCancel} className="btn-ghost text-xs py-1.5 px-3">
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
