@@ -69,7 +69,7 @@ export default function Onboarding() {
       proteinGoal: profile.protein_goal || '',
       carbGoal:    profile.carb_goal    || '',
       fatGoal:     profile.fat_goal     || '',
-      mode: 'maintain',
+      mode: profile.goal_direction || 'maintain',
     })
     setHealthConditions(profile.health_conditions || [])
     setDietType(profile.diet_type || 'omnivore')
@@ -138,6 +138,7 @@ export default function Onboarding() {
           protein_goal:      Number(goals.proteinGoal),
           carb_goal:         goals.carbGoal ? Number(goals.carbGoal) : null,
           fat_goal:          goals.fatGoal  ? Number(goals.fatGoal)  : null,
+          goal_direction:    goals.mode,
           game_mode:         gameMode,
           weight:            Number(stats.weight),
           height:            Number(stats.height),

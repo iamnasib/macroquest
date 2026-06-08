@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore, useGameStore } from '../store'
 import { ProgressBar, ResourceChip, Badge, StatCard, EmptyState } from '../components/ui'
-import { QUEST_COLORS, getWorldStage, getMacroStatus, MACRO_STATUS_COLORS } from '../lib/gameEngine'
+import { QUEST_COLORS, getWorldStage, getMacroStatus, MACRO_STATUS_COLORS, getWeightTrend } from '../lib/gameEngine'
 import { getDailyInsight } from '../lib/aria'
 
 function MiniSparkline({ data }) {
@@ -157,6 +157,7 @@ export default function Dashboard() {
         const startW = sorted[0]?.weight_kg ?? null
         const currentW = sorted[sorted.length - 1]?.weight_kg ?? null
         const delta = startW != null && currentW != null ? +(currentW - startW).toFixed(1) : null
+        const deltaColor = getWeightTrend(delta, profile?.goal_direction || 'maintain').color
         return (
           <div className='panel p-4 flex items-center gap-4'>
             <span className='text-xl shrink-0'>⚗️</span>
@@ -164,7 +165,7 @@ export default function Dashboard() {
               <p className='font-ui font-semibold text-sm text-text'>
                 {todayWeight != null ? `${todayWeight} kg today` : 'No weight logged today'}
               </p>
-              <p className={`text-xs font-ui ${delta == null ? 'text-text-muted' : delta < 0 ? 'text-emerald' : delta > 0 ? 'text-rose' : 'text-gold'}`}>
+              <p className={`text-xs font-ui ${delta == null ? 'text-text-muted' : deltaColor}`}>
                 {delta != null
                   ? `${delta > 0 ? '+' : ''}${delta} kg from start · ${weightHistory.length} readings`
                   : 'Log your weight to track progress'}

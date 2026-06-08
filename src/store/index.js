@@ -399,6 +399,17 @@ export const useGameStore = create(
         await get().loadWeightHistory(userId)
       },
 
+      setGoalDirection: async (userId, direction) => {
+        const prev = get().profile
+        // Optimistic update so the UI recolors instantly
+        set({ profile: { ...prev, goal_direction: direction } })
+        const { error } = await profiles.update(userId, { goal_direction: direction })
+        if (error) {
+          set({ profile: prev }) // revert on failure
+          throw error
+        }
+      },
+
       // ─── Update logging streak ───────────────────────────────────────────
       updateStreak: async (userId) => {
         const today = getTodayLocal()

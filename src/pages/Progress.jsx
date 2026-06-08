@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore, useGameStore } from '../store'
 import { Spinner } from '../components/ui'
+import { getWeightTrend, GOAL_DIRECTIONS } from '../lib/gameEngine'
 
 export default function Progress() {
   const { user } = useAuthStore()
-  const { weightHistory, todayWeight, loadWeightHistory, logWeight, deleteWeight } = useGameStore()
+  const { profile, weightHistory, todayWeight, loadWeightHistory, logWeight, deleteWeight, setGoalDirection } = useGameStore()
   const [inputKg, setInputKg] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [savingGoal, setSavingGoal] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -17,10 +19,25 @@ export default function Progress() {
     loadWeightHistory(user.id).finally(() => setLoading(false))
   }, [user?.id])
 
+  const goalDirection = profile?.goal_direction || 'maintain'
   const sorted = [...weightHistory].sort((a, b) => a.date.localeCompare(b.date))
   const startWeight = sorted[0]?.weight_kg ?? null
   const currentWeight = sorted[sorted.length - 1]?.weight_kg ?? null
   const delta = startWeight != null && currentWeight != null ? +(currentWeight - startWeight).toFixed(1) : null
+  const deltaTrend = getWeightTrend(delta, goalDirection)
+
+  const handleGoalChange = async (dir) => {
+    if (dir === goalDirection || savingGoal) return
+    setSavingGoal(true)
+    try {
+      await setGoalDirection(user.id, dir)
+      toast.success(`Goal set to ${GOAL_DIRECTIONS.find(g => g.id === dir)?.label}`)
+    } catch {
+      toast.error('Failed to update goal')
+    } finally {
+      setSavingGoal(false)
+    }
+  }
 
   const handleLog = async () => {
     const kg = parseFloat(inputKg)
@@ -62,6 +79,35 @@ export default function Progress() {
         {loading && <Spinner size='sm' />}
       </div>
 
+      {/* Goal direction selector — drives how weight changes are scored */}
+      <div className='panel p-4'>
+        <p className='font-ui font-semibold text-text text-sm mb-1'>My Goal</p>
+        <p className='text-xs text-text-muted font-ui mb-3'>
+          Sets how your weight trend is scored — gains and losses are judged against this.
+        </p>
+        <div className='grid grid-cols-3 gap-2'>
+          {GOAL_DIRECTIONS.map(g => {
+            const active = g.id === goalDirection
+            return (
+              <button
+                key={g.id}
+                onClick={() => handleGoalChange(g.id)}
+                disabled={savingGoal}
+                className={`rounded-lg p-3 border text-center transition-all disabled:opacity-60 ${
+                  active
+                    ? 'border-crystal/60 bg-crystal/10 text-crystal'
+                    : 'border-border text-text-muted hover:border-crystal/30'
+                }`}
+              >
+                <div className='text-xl mb-1'>{g.icon}</div>
+                <div className='font-ui font-semibold text-sm'>{g.label}</div>
+                <div className='text-xs text-text-muted font-ui mt-0.5'>{g.desc}</div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Log + Stats */}
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
         {/* Input card */}
@@ -101,12 +147,7 @@ export default function Progress() {
           <MetricTile
             label='Change'
             value={delta != null ? `${delta > 0 ? '+' : ''}${delta} kg` : '–'}
-            color={
-              delta == null ? 'text-text'
-              : delta < 0 ? 'text-emerald'
-              : delta > 0 ? 'text-rose'
-              : 'text-gold'
-            }
+            color={deltaTrend.color}
           />
           <MetricTile label='Readings' value={weightHistory.length} />
         </div>
@@ -137,12 +178,15 @@ export default function Progress() {
               })
               const prev = arr[i + 1]
               const diff = prev ? +(entry.weight_kg - prev.weight_kg).toFixed(1) : null
+              const diffColor = diff == null || diff === 0
+                ? 'text-text-muted'
+                : getWeightTrend(diff, goalDirection).color
               return (
                 <div key={entry.date} className='panel-deep p-3 flex items-center justify-between'>
                   <div>
                     <p className='font-ui font-semibold text-sm text-text'>{label}</p>
                     {diff != null && (
-                      <p className={`text-xs font-ui ${diff < 0 ? 'text-emerald' : diff > 0 ? 'text-rose' : 'text-text-muted'}`}>
+                      <p className={`text-xs font-ui ${diffColor}`}>
                         {diff > 0 ? '+' : ''}{diff} kg from prev
                       </p>
                     )}
