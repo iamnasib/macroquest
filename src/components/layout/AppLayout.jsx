@@ -149,8 +149,19 @@ export default function AppLayout({children}) {
           </div>
         )}
 
-        {/* Sign out */}
-        <div className='p-3 border-t border-border'>
+        {/* Settings + Sign out */}
+        <div className='p-3 border-t border-border space-y-1'>
+          <Link
+            to='/settings'
+            onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-2 transition-colors font-ui text-sm w-full px-2 py-2 rounded ${
+              location.pathname === "/settings"
+                ? "text-gold bg-gold/10"
+                : "text-text-muted hover:text-text hover:bg-panel"
+            } ${collapsed ? "justify-center" : ""}`}>
+            <span>⚙️</span>
+            {!collapsed && <span>Settings</span>}
+          </Link>
           <button
             onClick={signOut}
             className={`flex items-center gap-2 text-text-muted hover:text-rose transition-colors font-ui text-sm w-full px-2 py-2 rounded hover:bg-rose/10 ${collapsed ? "justify-center" : ""}`}>
