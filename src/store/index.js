@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase, foodLogs, profiles, streaks, characters, dailySummaries, questProgress } from '../lib/supabase'
+import { supabase, foodLogs, profiles, streaks, characters, dailySummaries, questProgress, bodyMetrics } from '../lib/supabase'
 import { nutritionToResources, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
 
 function getTodayLocal() {
@@ -89,6 +89,10 @@ export const useGameStore = create(
       todayXP: 0,
       levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
 
+      // Body metrics
+      weightHistory: [],
+      todayWeight: null,
+
       // UI
       xpPopups: [],
       loading: false,
@@ -99,14 +103,18 @@ export const useGameStore = create(
       loadProfile: async (userId) => {
         set({ loading: true })
         try {
-          const [profileRes, charRes, streakRes] = await Promise.all([
+          const [profileRes, charRes, streakRes, metricsRes] = await Promise.all([
             profiles.get(userId),
             characters.get(userId),
             streaks.get(userId),
+            bodyMetrics.getHistory(userId, 90),
           ])
           const profile = profileRes.data
           const character = charRes.data
           const streakData = streakRes.data
+          const history = metricsRes.data || []
+          const today = getTodayLocal()
+          const todayEntry = history.find(e => e.date === today)
 
           const levelData = getLevelFromXP(character?.total_xp || 0)
 
@@ -116,6 +124,8 @@ export const useGameStore = create(
             streakData: streakData || { logging: 0, protein: 0, budget: 0 },
             totalXP: character?.total_xp || 0,
             levelData,
+            weightHistory: history,
+            todayWeight: todayEntry?.weight_kg ?? null,
             loading: false,
             profileLoaded: true,
           })
@@ -367,6 +377,28 @@ export const useGameStore = create(
         }
       },
 
+      // ─── Body metric actions ─────────────────────────────────────────────
+      loadWeightHistory: async (userId) => {
+        const { data } = await bodyMetrics.getHistory(userId, 90)
+        const history = data || []
+        const today = getTodayLocal()
+        const todayEntry = history.find(e => e.date === today)
+        set({ weightHistory: history, todayWeight: todayEntry?.weight_kg ?? null })
+      },
+
+      logWeight: async (userId, weightKg) => {
+        const today = getTodayLocal()
+        const { error } = await bodyMetrics.upsert(userId, today, weightKg)
+        if (error) throw error
+        await get().loadWeightHistory(userId)
+      },
+
+      deleteWeight: async (userId, date) => {
+        const { error } = await bodyMetrics.remove(userId, date)
+        if (error) throw error
+        await get().loadWeightHistory(userId)
+      },
+
       // ─── Update logging streak ───────────────────────────────────────────
       updateStreak: async (userId) => {
         const today = getTodayLocal()
@@ -425,6 +457,7 @@ export const useGameStore = create(
         completedQuestIds: [], lastQuestDate: null,
         streakData: { logging: 0, protein: 0, budget: 0 },
         totalXP: 0, todayXP: 0, levelData: { level: 1, currentXP: 0, xpNeeded: 100 },
+        weightHistory: [], todayWeight: null,
         profileLoaded: false, loadVersion: 0,
       }),
     }),

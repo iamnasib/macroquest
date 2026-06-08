@@ -5,9 +5,28 @@ import { ProgressBar, ResourceChip, Badge, StatCard, EmptyState } from '../compo
 import { QUEST_COLORS, getWorldStage, getMacroStatus, MACRO_STATUS_COLORS } from '../lib/gameEngine'
 import { getDailyInsight } from '../lib/aria'
 
+function MiniSparkline({ data }) {
+  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-7)
+  if (sorted.length < 2) return null
+  const W = 72, H = 24
+  const weights = sorted.map(d => +d.weight_kg)
+  const minW = Math.min(...weights)
+  const maxW = Math.max(...weights)
+  const range = maxW - minW || 1
+  const toX = (i) => (i / (sorted.length - 1)) * W
+  const toY = (w) => H - ((w - minW) / range) * H
+  const path = 'M ' + sorted.map((d, i) => `${toX(i).toFixed(1)},${toY(+d.weight_kg).toFixed(1)}`).join(' L ')
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className='shrink-0'>
+      <path d={path} fill='none' stroke='#a78bfa' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+      <circle cx={toX(sorted.length - 1).toFixed(1)} cy={toY(+sorted[sorted.length - 1].weight_kg).toFixed(1)} r='2.5' fill='#f5a623' />
+    </svg>
+  )
+}
+
 export default function Dashboard() {
   const { user } = useAuthStore()
-  const { profile, character, todayLogs, todayTotals, todayResources, quests, levelData, streakData, xpPopups } = useGameStore()
+  const { profile, character, todayLogs, todayTotals, todayResources, quests, levelData, streakData, xpPopups, weightHistory, todayWeight } = useGameStore()
   const [ariaInsight, setAriaInsight] = useState(null)
   const [loadingInsight, setLoadingInsight] = useState(false)
 
@@ -131,6 +150,33 @@ export default function Dashboard() {
         <StatCard label="Quests"    value={`${completedQuests}/4`}         icon="⚔️" color="text-emerald" sub="Completed today" />
         <StatCard label="Meals"     value={todayLogs.length}              icon="🍽️" color="text-crystal" sub="Logged today" />
       </div>
+
+      {/* ── Body Forge widget ── */}
+      {(() => {
+        const sorted = [...weightHistory].sort((a, b) => a.date.localeCompare(b.date))
+        const startW = sorted[0]?.weight_kg ?? null
+        const currentW = sorted[sorted.length - 1]?.weight_kg ?? null
+        const delta = startW != null && currentW != null ? +(currentW - startW).toFixed(1) : null
+        return (
+          <div className='panel p-4 flex items-center gap-4'>
+            <span className='text-xl shrink-0'>⚗️</span>
+            <div className='flex-1 min-w-0'>
+              <p className='font-ui font-semibold text-sm text-text'>
+                {todayWeight != null ? `${todayWeight} kg today` : 'No weight logged today'}
+              </p>
+              <p className={`text-xs font-ui ${delta == null ? 'text-text-muted' : delta < 0 ? 'text-emerald' : delta > 0 ? 'text-rose' : 'text-gold'}`}>
+                {delta != null
+                  ? `${delta > 0 ? '+' : ''}${delta} kg from start · ${weightHistory.length} readings`
+                  : 'Log your weight to track progress'}
+              </p>
+            </div>
+            {weightHistory.length >= 2 && <MiniSparkline data={weightHistory} />}
+            <Link to='/progress' className='btn-ghost text-xs py-1.5 px-3 shrink-0'>
+              {todayWeight != null ? '✎ Update' : '+ Log'}
+            </Link>
+          </div>
+        )
+      })()}
 
       {/* ── Daily Quests ── */}
       <section>

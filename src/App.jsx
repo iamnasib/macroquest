@@ -10,6 +10,7 @@ import FoodLog from "./pages/FoodLog";
 import Quests from "./pages/Quests";
 import Character from "./pages/Character";
 import ARIAPage from "./pages/ARIA";
+import Progress from "./pages/Progress";
 import {Spinner} from "./components/ui";
 
 function LoadingScreen() {
@@ -148,6 +149,16 @@ export default function App() {
             <OnboardedRoute>
               <GameLayout>
                 <ARIAPage />
+              </GameLayout>
+            </OnboardedRoute>
+          }
+        />
+        <Route
+          path='/progress'
+          element={
+            <OnboardedRoute>
+              <GameLayout>
+                <Progress />
               </GameLayout>
             </OnboardedRoute>
           }

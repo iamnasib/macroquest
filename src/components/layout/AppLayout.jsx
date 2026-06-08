@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   {path: "/dashboard", icon: "🏰", label: "Dashboard"},
   {path: "/log", icon: "⚡", label: "Food Log"},
   {path: "/quests", icon: "⚔️", label: "Quests"},
+  {path: "/progress", icon: "⚗️", label: "Body Forge"},
   {path: "/character", icon: "🐉", label: "Character"},
   {path: "/aria", icon: "🤖", label: "ARIA AI"},
 ];
