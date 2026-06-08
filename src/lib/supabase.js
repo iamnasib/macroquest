@@ -128,6 +128,30 @@ export const dailySummaries = {
   },
 }
 
+// ─── Body Metrics ─────────────────────────────────────────────────────────────
+export const bodyMetrics = {
+  getHistory: (userId, days = 90) => {
+    const now = new Date()
+    const fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1))
+      .toLocaleDateString('en-CA')
+    return supabase
+      .from('body_metrics')
+      .select('date, weight_kg, notes')
+      .eq('user_id', userId)
+      .gte('date', fromDate)
+      .order('date', { ascending: true })
+  },
+
+  upsert: (userId, date, weightKg, notes = null) =>
+    supabase.from('body_metrics').upsert(
+      { user_id: userId, date, weight_kg: weightKg, notes },
+      { onConflict: 'user_id,date' }
+    ),
+
+  remove: (userId, date) =>
+    supabase.from('body_metrics').delete().eq('user_id', userId).eq('date', date),
+}
+
 // ─── Character / XP ───────────────────────────────────────────────────────────
 export const characters = {
   get: (userId) =>

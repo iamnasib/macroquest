@@ -168,3 +168,39 @@ export const MACRO_STATUS_COLORS = {
   partial: 'text-amber',
   low:     'text-text-muted',
 }
+
+// ─── Weight Trend Status ──────────────────────────────────────────────────────
+// Colors a weight change according to the user's goal so "good" is goal-aware:
+//   cut      → losing (delta < 0) is good
+//   bulk     → gaining (delta > 0) is good
+//   maintain → staying within a small band is good; drifting either way is a warning
+// `delta` is (later weight − earlier weight) in kg; negative means weight went down.
+export const MAINTAIN_BAND_KG = 1.5
+
+export function getWeightTrend(delta, goalDirection = 'maintain') {
+  if (delta == null || Number.isNaN(delta)) {
+    return { color: 'text-text-muted', sense: 'none' }
+  }
+  const dir = goalDirection || 'maintain'
+
+  if (dir === 'maintain') {
+    if (Math.abs(delta) <= MAINTAIN_BAND_KG) return { color: 'text-emerald', sense: 'on-track' }
+    return { color: 'text-amber', sense: 'drifting' }
+  }
+
+  const losing = delta < 0
+  const gaining = delta > 0
+  if (delta === 0) return { color: 'text-gold', sense: 'flat' }
+
+  if (dir === 'cut') {
+    return losing ? { color: 'text-emerald', sense: 'good' } : { color: 'text-rose', sense: 'bad' }
+  }
+  // bulk
+  return gaining ? { color: 'text-emerald', sense: 'good' } : { color: 'text-rose', sense: 'bad' }
+}
+
+export const GOAL_DIRECTIONS = [
+  { id: 'cut',      label: 'Cutting',     icon: '📉', desc: 'Lose weight' },
+  { id: 'maintain', label: 'Maintaining', icon: '⚖️', desc: 'Hold steady' },
+  { id: 'bulk',     label: 'Bulking',     icon: '📈', desc: 'Gain weight' },
+]
