@@ -129,6 +129,18 @@ export const useGameStore = create(
             loading: false,
             profileLoaded: true,
           })
+
+          // Keep the user's timezone fresh so scheduled reminders fire at the
+          // correct LOCAL hour. Fire-and-forget — never block profile load.
+          try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+            if (tz && profile && profile.timezone !== tz) {
+              profiles.update(userId, { timezone: tz })
+                .then(() => set(state => ({ profile: { ...state.profile, timezone: tz } })))
+                .catch(() => {})
+            }
+          } catch { /* Intl unavailable — leave timezone as-is */ }
+
           await get().loadTodayLogs(userId, { grantXP: false })
         } catch (err) {
           console.error('Load profile error:', err)
@@ -404,6 +416,17 @@ export const useGameStore = create(
         // Optimistic update so the UI recolors instantly
         set({ profile: { ...prev, goal_direction: direction } })
         const { error } = await profiles.update(userId, { goal_direction: direction })
+        if (error) {
+          set({ profile: prev }) // revert on failure
+          throw error
+        }
+      },
+
+      // ─── Notification / email preferences ────────────────────────────────
+      updateNotificationPrefs: async (userId, patch) => {
+        const prev = get().profile
+        set({ profile: { ...prev, ...patch } }) // optimistic
+        const { error } = await profiles.update(userId, patch)
         if (error) {
           set({ profile: prev }) // revert on failure
           throw error

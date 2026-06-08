@@ -11,6 +11,7 @@ import Quests from "./pages/Quests";
 import Character from "./pages/Character";
 import ARIAPage from "./pages/ARIA";
 import Progress from "./pages/Progress";
+import Settings from "./pages/Settings";
 import {Spinner} from "./components/ui";
 
 function LoadingScreen() {
@@ -159,6 +160,16 @@ export default function App() {
             <OnboardedRoute>
               <GameLayout>
                 <Progress />
+              </GameLayout>
+            </OnboardedRoute>
+          }
+        />
+        <Route
+          path='/settings'
+          element={
+            <OnboardedRoute>
+              <GameLayout>
+                <Settings />
               </GameLayout>
             </OnboardedRoute>
           }
