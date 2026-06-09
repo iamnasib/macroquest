@@ -7,6 +7,7 @@ import {
   getWorldStage,
   CHARACTERS,
   MODES,
+  modeFromGoalDirection,
 } from "../lib/gameEngine";
 import {ProgressBar, Badge, StatCard} from "../components/ui";
 import {supabase} from "../lib/supabase";
@@ -43,10 +44,11 @@ export default function Character() {
     if (!user) return;
     setSaving(true);
     try {
+      const goalDirection = Object.values(MODES).find(m => m.id === selectedMode)?.goalDirection ?? 'maintain'
       await Promise.all([
         supabase
           .from("profiles")
-          .update({game_mode: selectedMode})
+          .update({ game_mode: selectedMode, goal_direction: goalDirection })
           .eq("id", user.id),
         supabase
           .from("characters")
@@ -237,9 +239,10 @@ export default function Character() {
                   : "border-border hover:border-gold/30"
               }`}>
               <div className='text-2xl mb-2'>{mode.icon}</div>
-              <p className='font-ui font-semibold text-sm text-text'>
+              <p className={`font-ui font-semibold text-sm ${selectedMode === mode.id ? 'text-gold' : 'text-text'}`}>
                 {mode.name}
               </p>
+              <p className='font-ui text-xs text-gold/70 mt-0.5'>{mode.goalDesc}</p>
               <p className='font-ui text-xs text-text-muted mt-1'>
                 {mode.desc}
               </p>

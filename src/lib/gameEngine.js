@@ -10,9 +10,14 @@ export const RESOURCES = {
 }
 
 export const MODES = {
-  EXPEDITION:    { id: 'EXPEDITION',    name: 'Expedition',     icon: '⚔️',  desc: 'Burn stored energy, defeat bosses, travel regions'    },
-  EMPIRE:        { id: 'EMPIRE',        name: 'Build Empire',   icon: '🏰', desc: 'Gather resources, construct buildings, expand territory' },
-  WORLD_BUILDER: { id: 'WORLD_BUILDER', name: 'World Builder',  icon: '🌱', desc: 'Grow a thriving ecosystem through healthy habits'       },
+  EXPEDITION:    { id: 'EXPEDITION',    name: 'Expedition',    icon: '⚔️',  goalDirection: 'cut',      goalDesc: 'Calorie deficit · lose weight',     desc: 'Burn stored energy, defeat bosses, travel regions'     },
+  EMPIRE:        { id: 'EMPIRE',        name: 'Build Empire',  icon: '🏰', goalDirection: 'bulk',     goalDesc: 'Calorie surplus · gain weight',      desc: 'Gather resources, construct buildings, expand territory' },
+  WORLD_BUILDER: { id: 'WORLD_BUILDER', name: 'World Builder', icon: '🌱', goalDirection: 'maintain', goalDesc: 'Maintenance calories · hold steady', desc: 'Grow a thriving ecosystem through healthy habits'       },
+}
+
+// Returns the MODES entry whose goalDirection matches, defaulting to EMPIRE.
+export function modeFromGoalDirection(goalDirection) {
+  return Object.values(MODES).find(m => m.goalDirection === goalDirection) ?? MODES.EMPIRE
 }
 
 export const CHARACTERS = [
@@ -199,8 +204,3 @@ export function getWeightTrend(delta, goalDirection = 'maintain') {
   return gaining ? { color: 'text-emerald', sense: 'good' } : { color: 'text-rose', sense: 'bad' }
 }
 
-export const GOAL_DIRECTIONS = [
-  { id: 'cut',      label: 'Cutting',     icon: '📉', desc: 'Lose weight' },
-  { id: 'maintain', label: 'Maintaining', icon: '⚖️', desc: 'Hold steady' },
-  { id: 'bulk',     label: 'Bulking',     icon: '📈', desc: 'Gain weight' },
-]

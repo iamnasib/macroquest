@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase, foodLogs, profiles, streaks, characters, dailySummaries, questProgress, bodyMetrics } from '../lib/supabase'
-import { nutritionToResources, getLevelFromXP, generateDailyQuests, getStreakBonus } from '../lib/gameEngine'
+import { nutritionToResources, getLevelFromXP, generateDailyQuests, getStreakBonus, modeFromGoalDirection } from '../lib/gameEngine'
 
 function getTodayLocal() {
   return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local timezone
@@ -413,11 +413,11 @@ export const useGameStore = create(
 
       setGoalDirection: async (userId, direction) => {
         const prev = get().profile
-        // Optimistic update so the UI recolors instantly
-        set({ profile: { ...prev, goal_direction: direction } })
-        const { error } = await profiles.update(userId, { goal_direction: direction })
+        const gameMode = modeFromGoalDirection(direction).id
+        set({ profile: { ...prev, goal_direction: direction, game_mode: gameMode } })
+        const { error } = await profiles.update(userId, { goal_direction: direction, game_mode: gameMode })
         if (error) {
-          set({ profile: prev }) // revert on failure
+          set({ profile: prev })
           throw error
         }
       },
