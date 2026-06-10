@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore, useGameStore } from '../store'
 import { Spinner } from '../components/ui'
-import { getWeightTrend, GOAL_DIRECTIONS } from '../lib/gameEngine'
+import { getWeightTrend, MODES } from '../lib/gameEngine'
 
 export default function Progress() {
   const { user } = useAuthStore()
@@ -31,7 +31,8 @@ export default function Progress() {
     setSavingGoal(true)
     try {
       await setGoalDirection(user.id, dir)
-      toast.success(`Goal set to ${GOAL_DIRECTIONS.find(g => g.id === dir)?.label}`)
+      const mode = Object.values(MODES).find(m => m.goalDirection === dir)
+      toast.success(`Quest set to ${mode?.name ?? dir}`)
     } catch {
       toast.error('Failed to update goal')
     } finally {
@@ -79,29 +80,32 @@ export default function Progress() {
         {loading && <Spinner size='sm' />}
       </div>
 
-      {/* Goal direction selector — drives how weight changes are scored */}
+      {/* Quest mode selector — drives calorie target and how weight changes are scored */}
       <div className='panel p-4'>
-        <p className='font-ui font-semibold text-text text-sm mb-1'>My Goal</p>
+        <p className='font-ui font-semibold text-text text-sm mb-1'>My Quest</p>
         <p className='text-xs text-text-muted font-ui mb-3'>
-          Sets how your weight trend is scored — gains and losses are judged against this.
+          Sets your calorie target and how weight progress is scored.
         </p>
-        <div className='grid grid-cols-3 gap-2'>
-          {GOAL_DIRECTIONS.map(g => {
-            const active = g.id === goalDirection
+        <div className='space-y-2'>
+          {Object.values(MODES).map(mode => {
+            const active = mode.goalDirection === goalDirection
             return (
               <button
-                key={g.id}
-                onClick={() => handleGoalChange(g.id)}
+                key={mode.id}
+                onClick={() => handleGoalChange(mode.goalDirection)}
                 disabled={savingGoal}
-                className={`rounded-lg p-3 border text-center transition-all disabled:opacity-60 ${
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all disabled:opacity-60 ${
                   active
-                    ? 'border-crystal/60 bg-crystal/10 text-crystal'
-                    : 'border-border text-text-muted hover:border-crystal/30'
+                    ? 'border-crystal/60 bg-crystal/10'
+                    : 'border-border hover:border-crystal/30'
                 }`}
               >
-                <div className='text-xl mb-1'>{g.icon}</div>
-                <div className='font-ui font-semibold text-sm'>{g.label}</div>
-                <div className='text-xs text-text-muted font-ui mt-0.5'>{g.desc}</div>
+                <span className='text-2xl shrink-0'>{mode.icon}</span>
+                <div className='min-w-0'>
+                  <p className={`font-ui font-semibold text-sm ${active ? 'text-crystal' : 'text-text'}`}>{mode.name}</p>
+                  <p className='text-xs text-text-muted font-ui mt-0.5'>{mode.goalDesc}</p>
+                </div>
+                {active && <span className='ml-auto text-crystal text-sm'>✓</span>}
               </button>
             )
           })}

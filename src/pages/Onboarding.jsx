@@ -2,12 +2,12 @@ import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore, useGameStore } from '../store'
 import { calculateTDEE } from '../lib/foodApi'
-import { CHARACTERS, MODES } from '../lib/gameEngine'
+import { CHARACTERS, MODES, modeFromGoalDirection } from '../lib/gameEngine'
 import { Input } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
-const STEPS = ['Body Stats', 'Battle Conditions', 'Set Goals', 'Choose Hero', 'Choose Mode']
+const STEPS = ['Body Stats', 'Battle Conditions', 'Set Goals', 'Choose Hero']
 
 const HEALTH_CONDITIONS = [
   { id: 'diabetes',            icon: '🩸', name: 'Diabetes / Pre-diabetes', desc: 'Lower carb targets applied'        },
@@ -51,7 +51,6 @@ export default function Onboarding() {
   })
   const [tdee, setTdee]         = useState(null)
   const [character, setCharacter] = useState('warrior')
-  const [gameMode, setGameMode]   = useState('EMPIRE')
 
   // Pre-fill when editing an existing profile
   useEffect(() => {
@@ -74,7 +73,6 @@ export default function Onboarding() {
     setHealthConditions(profile.health_conditions || [])
     setDietType(profile.diet_type || 'omnivore')
     setCharacter(charData?.character_type || 'warrior')
-    setGameMode(profile.game_mode || 'EMPIRE')
   }, [profileLoaded])
 
   const setStat = (k, v) => setStats(s => ({ ...s, [k]: v }))
@@ -139,7 +137,7 @@ export default function Onboarding() {
           carb_goal:         goals.carbGoal ? Number(goals.carbGoal) : null,
           fat_goal:          goals.fatGoal  ? Number(goals.fatGoal)  : null,
           goal_direction:    goals.mode,
-          game_mode:         gameMode,
+          game_mode:         modeFromGoalDirection(goals.mode).id,
           weight:            Number(stats.weight),
           height:            Number(stats.height),
           age:               Number(stats.age),
@@ -310,25 +308,28 @@ export default function Onboarding() {
           {/* ── Step 2: Goals ── */}
           {step === 2 && (
             <div className="space-y-4">
-              <StepHeader icon="🎯" title="Set Goals" sub="Primary objective shapes your calorie target" />
+              <StepHeader icon="🎯" title="Set Goals" sub="Choose your quest — this shapes your calorie target" />
 
-              {/* Bulk / Cut / Maintain */}
-              <div className="flex gap-2">
-                {[
-                  { id: 'bulk',     label: '🏋️ Bulk',     desc: '+300 cal' },
-                  { id: 'cut',      label: '⚔️ Cut',       desc: '−400 cal' },
-                  { id: 'maintain', label: '🛡️ Maintain',  desc: 'TDEE'     },
-                ].map(m => (
-                  <button key={m.id} onClick={() => {
-                    setGoal('mode', m.id)
-                    if (tdee) setGoal('calorieGoal', tdee[m.id === 'bulk' ? 'bulkCalories' : m.id === 'cut' ? 'cutCalories' : 'maintainCalories'])
-                  }}
-                    className={`flex-1 py-2 rounded border font-ui text-xs text-center transition-all
-                      ${goals.mode === m.id ? 'border-gold bg-gold/10 text-gold' : 'border-border text-text-muted hover:border-gold/20'}`}>
-                    <p>{m.label}</p>
-                    <p className="opacity-70 mt-0.5">{m.desc}</p>
-                  </button>
-                ))}
+              {/* Mode cards — each maps 1:1 to a goal direction */}
+              <div className="space-y-2">
+                {Object.values(MODES).map(mode => {
+                  const active = goals.mode === mode.goalDirection
+                  return (
+                    <button key={mode.id} onClick={() => {
+                      setGoal('mode', mode.goalDirection)
+                      if (tdee) setGoal('calorieGoal', tdee[mode.goalDirection === 'bulk' ? 'bulkCalories' : mode.goalDirection === 'cut' ? 'cutCalories' : 'maintainCalories'])
+                    }}
+                      className={`w-full p-3 rounded-lg border text-left transition-all flex items-center gap-3
+                        ${active ? 'border-gold/60 bg-gold/10' : 'border-border hover:border-gold/30'}`}>
+                      <span className="text-2xl shrink-0">{mode.icon}</span>
+                      <div className="min-w-0">
+                        <p className={`font-ui font-semibold text-sm ${active ? 'text-gold' : 'text-text'}`}>{mode.name}</p>
+                        <p className="font-ui text-xs text-text-muted mt-0.5">{mode.goalDesc}</p>
+                      </div>
+                      {active && <span className="ml-auto text-gold text-sm">✓</span>}
+                    </button>
+                  )
+                })}
               </div>
 
               {/* Calculate / Recalculate */}
@@ -398,28 +399,6 @@ export default function Onboarding() {
                     <div className="text-3xl mb-1">{c.icon}</div>
                     <p className="font-ui text-xs font-semibold text-text">{c.name}</p>
                     <p className="font-ui text-xs text-text-muted mt-0.5" style={{ fontSize: '0.7rem' }}>{c.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 4: Game Mode ── */}
-          {step === 4 && (
-            <div className="space-y-4">
-              <StepHeader icon="🌍" title="Choose Game Mode" sub="How do you want to play?" />
-              <div className="space-y-3">
-                {Object.values(MODES).map(mode => (
-                  <button key={mode.id} onClick={() => setGameMode(mode.id)}
-                    className={`w-full p-4 rounded-lg border text-left transition-all
-                      ${gameMode === mode.id ? 'border-gold/60 bg-gold/10' : 'border-border hover:border-gold/30'}`}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{mode.icon}</span>
-                      <div>
-                        <p className="font-ui font-semibold text-sm text-text">{mode.name}</p>
-                        <p className="font-ui text-xs text-text-muted">{mode.desc}</p>
-                      </div>
-                    </div>
                   </button>
                 ))}
               </div>
