@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
             title: "🔥 Your streak is at risk!",
             body: `Day ${streak!.logging} streak — log a meal before midnight to keep it alive, ${p.username || "Champion"}!`,
             tag: "streak-saver",
-            url: "/log",
+            url: "/log?src=push",
           });
         }
         // Mark evaluated either way so we don't re-check all evening.
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
             title: "⚡ Time to log your meals",
             body: "Keep your empire growing — log today's food to earn XP and resources!",
             tag: "daily-reminder",
-            url: "/log",
+            url: "/log?src=push",
           });
         }
         await supabase.from("profiles")

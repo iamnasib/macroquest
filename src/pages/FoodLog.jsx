@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuthStore, useGameStore } from '../store'
 import { searchFoods, calculateServing, COMMON_FOODS, filterFoodsByConditions } from '../lib/foodApi'
 import { nutritionToResources } from '../lib/gameEngine'
@@ -11,7 +12,8 @@ const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Pos
 
 export default function FoodLog() {
   const { user } = useAuthStore()
-  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog, editFoodLog } = useGameStore()
+  const location = useLocation()
+  const { todayLogs, todayTotals, profile, character, addFoodLog, removeFoodLog, editFoodLog, repeatYesterday } = useGameStore()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -33,12 +35,85 @@ export default function FoodLog() {
   const [editServing, setEditServing] = useState(100)
   const [editMealType, setEditMealType] = useState('Lunch')
   const [editSaving, setEditSaving] = useState(false)
+  // Quick-log state
+  const [recentFoods, setRecentFoods] = useState([])
+  const [quickLogging, setQuickLogging] = useState(null) // food_name being quick-logged
+  const [repeating, setRepeating] = useState(false)
+  const [yesterdayCount, setYesterdayCount] = useState(0)
   const searchTimeout = useRef(null)
   const searchVersion = useRef(0)
   const previewRef    = useRef(null)
+  const searchBoxRef  = useRef(null)
 
   const today = new Date().toLocaleDateString('en-CA')
   const isToday = viewDate === today
+
+  // Arriving from a push notification → put the user straight into the flow
+  useEffect(() => {
+    if (location.search.includes('src=push')) {
+      setTimeout(() => searchBoxRef.current?.querySelector('input')?.focus(), 100)
+    }
+  }, [])
+
+  // Recent foods (deduped by name, newest first) + yesterday's meal count
+  useEffect(() => {
+    if (!user?.id) return
+    foodLogsApi.getRecent(user.id).then(({ data }) => {
+      const seen = new Set()
+      const unique = []
+      for (const l of data || []) {
+        const key = `${l.food_name}|${l.brand || ''}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        unique.push(l)
+        if (unique.length >= 6) break
+      }
+      setRecentFoods(unique)
+    })
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    foodLogsApi.getByDate(user.id, yesterday.toLocaleDateString('en-CA'))
+      .then(({ data }) => setYesterdayCount(data?.length || 0))
+  }, [user?.id, todayLogs.length])
+
+  // One tap: re-log a recent food with its last serving + meal type
+  const handleQuickLog = async (recent) => {
+    if (quickLogging) return
+    setQuickLogging(recent.food_name)
+    try {
+      await addFoodLog(user.id, {
+        food_name:    recent.food_name,
+        brand:        recent.brand || '',
+        serving_size: recent.serving_size,
+        meal_type:    recent.meal_type || mealType,
+        log_date:     new Date().toLocaleDateString('en-CA'),
+        calories: recent.calories,
+        protein:  recent.protein,
+        carbs:    recent.carbs,
+        fat:      recent.fat,
+        fiber:    recent.fiber,
+      })
+      toast.success(`🍽️ ${recent.food_name} logged again! +${Math.round(recent.calories)} EP`)
+    } catch {
+      toast.error('Failed to log food. Try again.')
+    } finally {
+      setQuickLogging(null)
+    }
+  }
+
+  const handleRepeatYesterday = async () => {
+    if (repeating) return
+    setRepeating(true)
+    try {
+      const n = await repeatYesterday(user.id)
+      if (n > 0) toast.success(`↻ Repeated yesterday — ${n} meal${n > 1 ? 's' : ''} logged!`)
+      else toast('Nothing was logged yesterday.')
+    } catch {
+      toast.error('Failed to repeat yesterday.')
+    } finally {
+      setRepeating(false)
+    }
+  }
 
   // Computed display state — switches between live store state and fetched past logs
   const displayLogs = isToday ? todayLogs : pastLogs
@@ -245,11 +320,51 @@ export default function FoodLog() {
           </div>
 
           {/* Search input */}
-          <Input
-            placeholder="🔍 Search food (e.g. 'dal', 'chicken', 'rice')"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
+          <div ref={searchBoxRef}>
+            <Input
+              placeholder="🔍 Search food (e.g. 'dal', 'chicken', 'rice')"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </div>
+
+          {/* One-tap: repeat all of yesterday's meals */}
+          {todayLogs.length === 0 && yesterdayCount > 0 && (
+            <button
+              onClick={handleRepeatYesterday}
+              disabled={repeating}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gold/40 text-gold font-ui text-sm hover:bg-gold/10 transition-all disabled:opacity-50"
+            >
+              {repeating ? <Spinner size="sm" /> : '↻'}
+              Repeat yesterday's meals ({yesterdayCount})
+            </button>
+          )}
+
+          {/* Recent foods — one-tap re-log with last serving */}
+          {!query && recentFoods.length > 0 && (
+            <div>
+              <p className="text-xs text-text-muted font-ui uppercase tracking-widest mb-2">⏱️ Recent</p>
+              <div className="space-y-1.5">
+                {recentFoods.map(r => (
+                  <div key={`${r.food_name}|${r.brand || ''}`} className="panel-deep p-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-ui font-semibold text-sm text-text truncate">{r.food_name}</p>
+                      <p className="text-xs text-text-muted font-ui">{r.serving_size}g · ⚡{Math.round(r.calories)} EP · 🔩{r.protein?.toFixed(0)}g</p>
+                    </div>
+                    <button
+                      onClick={() => handleQuickLog(r)}
+                      disabled={!!quickLogging}
+                      className="shrink-0 py-1.5 px-3 rounded bg-gold/15 border border-gold/40 text-gold text-xs font-ui font-semibold hover:bg-gold/25 transition-colors disabled:opacity-50"
+                      title={`Log ${r.serving_size}g again`}
+                    >
+                      {quickLogging === r.food_name ? '…' : '⚡ Log again'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted font-ui uppercase tracking-widest mt-4 mb-1">🍱 Common foods</p>
+            </div>
+          )}
 
           {/* Meal type selector */}
           <div className="flex gap-2 flex-wrap">
