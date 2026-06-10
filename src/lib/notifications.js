@@ -97,6 +97,10 @@ export async function enablePush(userId) {
 }
 
 // Unsubscribe this browser and remove its row.
+// Order matters: the browser-side unsubscribe MUST come first. If the DB row
+// belongs to a different user (shared browser), RLS silently blocks our delete
+// — but because the endpoint is already dead, the scheduler's next push gets a
+// 404/410 and prunes the orphaned row server-side.
 export async function disablePush() {
   if (!pushSupported()) return { ok: true }
   const reg = await navigator.serviceWorker.getRegistration('/sw.js')

@@ -61,14 +61,9 @@ function OnboardedRoute({children}) {
   return children;
 }
 
+// OnboardedRoute (always rendered above this) owns the loadProfile call — a
+// second loader here lacked its profileLoading guard and double-fetched.
 function GameLayout({children}) {
-  const {user} = useAuthStore();
-  const {loadProfile, profileLoaded} = useGameStore();
-
-  useEffect(() => {
-    if (user && !profileLoaded) loadProfile(user.id);
-  }, [user?.id]);
-
   return <AppLayout>{children}</AppLayout>;
 }
 

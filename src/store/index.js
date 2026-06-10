@@ -7,6 +7,10 @@ function getTodayLocal() {
   return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local timezone
 }
 
+// Serializes daily_summaries writes so overlapping loadTodayLogs calls can't
+// land out of order at the DB and persist a stale xp_earned snapshot.
+let summaryWriteChain = Promise.resolve()
+
 // ─── Auth Store ───────────────────────────────────────────────────────────────
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -160,21 +164,26 @@ export const useGameStore = create(
 
         const today = getTodayLocal()
 
+        // Fetch BEFORE mutating any state, so a stale concurrent call can be
+        // discarded without having left partial writes behind.
+        const [{ data: dbProgress }, { data, error }] = await Promise.all([
+          questProgress.getToday(userId),
+          foodLogs.getToday(userId),
+        ])
+        if (error) return
+        if (get().loadVersion !== myVersion) return // a newer call superseded us
+
         // Reset daily tracking at the start of a new calendar day
         if (get().lastQuestDate !== today) {
           set({ completedQuestIds: [], lastQuestDate: today, todayXP: 0 })
         }
 
         // Sync quest completions from DB — cross-device consistency
-        const { data: dbProgress } = await questProgress.getToday(userId)
         if (dbProgress?.length > 0) {
           const dbIds = dbProgress.map(r => r.quest_id)
           const merged = [...new Set([...(get().completedQuestIds || []), ...dbIds])]
           set({ completedQuestIds: merged })
         }
-
-        const { data, error } = await foodLogs.getToday(userId)
-        if (error) return
 
         const logs = data || []
         const totals = logs.reduce((acc, log) => ({
@@ -216,18 +225,31 @@ export const useGameStore = create(
           quests,
         })
 
-        // Persist daily snapshot for weekly summaries
-        const completedCount = quests.filter(q => q.completed).length
-        dailySummaries.upsert(userId, today, {
+        // Persist daily snapshot for weekly summaries. Snapshot the payload NOW
+        // and chain the write so two overlapping calls can't land out of order
+        // and persist a stale xp_earned.
+        const summaryPayload = {
           total_calories:   totals.calories,
           total_protein:    totals.protein,
           total_carbs:      totals.carbs,
           total_fat:        totals.fat,
-          quests_completed: completedCount,
+          quests_completed: quests.filter(q => q.completed).length,
           xp_earned:        get().todayXP,
-        }).then(({ error }) => {
-          if (error) console.error('daily_summaries upsert failed:', error)
-        })
+        }
+        summaryWriteChain = summaryWriteChain
+          .then(() => dailySummaries.upsert(userId, today, summaryPayload))
+          .then(({ error }) => {
+            if (error) console.error('daily_summaries upsert failed:', error)
+          })
+          .catch(err => console.error('daily_summaries upsert failed:', err))
+      },
+
+      // ─── Refresh character/XP/level from DB (single source of truth) ────
+      refreshCharacter: async (userId) => {
+        const { data: charData } = await characters.get(userId)
+        if (charData) {
+          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+        }
       },
 
       // ─── Apply character class XP multiplier (Mage: +10%) ───────────────
@@ -259,10 +281,7 @@ export const useGameStore = create(
         await get().loadTodayLogs(userId)
 
         // Refresh character XP from DB so level display is accurate
-        const { data: charData } = await characters.get(userId)
-        if (charData) {
-          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
-        }
+        await get().refreshCharacter(userId)
         return data
       },
 
@@ -308,10 +327,41 @@ export const useGameStore = create(
           }
         }
 
+        // If that was today's last log, today's streak credit must be revoked
+        // — otherwise log+delete keeps a streak alive without tracking food.
+        if (get().todayLogs.length === 0) {
+          await get().revertTodayStreak(userId)
+        }
+
         // Confirm final XP from DB
-        const { data: charData } = await characters.get(userId)
-        if (charData) {
-          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
+        await get().refreshCharacter(userId)
+      },
+
+      // ─── Revert today's streak credit (all of today's logs deleted) ─────
+      revertTodayStreak: async (userId) => {
+        const today = getTodayLocal()
+        const { data: streakRow } = await streaks.get(userId)
+        if (!streakRow || streakRow.last_log_date !== today) return
+
+        const prevLogging = streakRow.logging || 0
+        const newLogging = Math.max(0, prevLogging - 1)
+
+        // Roll last_log_date back to the most recent earlier log day so the
+        // next add re-derives the streak correctly (consecutive vs broken).
+        const { data: prevRow } = await foodLogs.getLastLogDateBefore(userId, today)
+        await streaks.upsert(userId, {
+          logging: newLogging,
+          last_log_date: prevRow?.log_date ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        set(state => ({ streakData: { ...state.streakData, logging: newLogging } }))
+
+        // If today's credit was the milestone grant, take that XP back too
+        const bonus = getStreakBonus(prevLogging)
+        if (bonus.xp > 0 && [3, 7, 14, 30].includes(prevLogging)) {
+          const charType = get().character?.character_type
+          const streakXP = charType === 'samurai' ? Math.round(bonus.xp * 1.15) : bonus.xp
+          await characters.addXP(userId, -streakXP)
         }
       },
 
@@ -348,10 +398,7 @@ export const useGameStore = create(
           }
         }
 
-        const { data: charData } = await characters.get(userId)
-        if (charData) {
-          set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
-        }
+        await get().refreshCharacter(userId)
       },
 
       // ─── Quest completion handler — persists XP and quest state to DB ───
@@ -382,10 +429,7 @@ export const useGameStore = create(
           get().addXPPopup(`+${xpGained} XP`, 'quest')
 
           // Refresh character state from DB
-          const { data: charData } = await characters.get(userId)
-          if (charData) {
-            set({ character: charData, totalXP: charData.total_xp, levelData: getLevelFromXP(charData.total_xp) })
-          }
+          await get().refreshCharacter(userId)
         }
       },
 
@@ -434,45 +478,55 @@ export const useGameStore = create(
       },
 
       // ─── Update logging streak ───────────────────────────────────────────
+      // In-flight guard: this is a read-modify-write on the streaks row, so two
+      // rapid food logs racing here could double-increment and double-grant
+      // milestone XP. Concurrent calls are same-day duplicates — safe to skip.
+      _streakUpdating: false,
       updateStreak: async (userId) => {
-        const today = getTodayLocal()
-        const current = get().streakData || { logging: 0, protein: 0, budget: 0 }
-        const { data: streakRow } = await streaks.get(userId)
+        if (get()._streakUpdating) return
+        set({ _streakUpdating: true })
+        try {
+          const today = getTodayLocal()
+          const current = get().streakData || { logging: 0, protein: 0, budget: 0 }
+          const { data: streakRow } = await streaks.get(userId)
 
-        const lastDate = streakRow?.last_log_date
-        let newLogging = streakRow?.logging || 0
+          const lastDate = streakRow?.last_log_date
+          let newLogging = streakRow?.logging || 0
 
-        if (lastDate === today) {
-          // Already logged today — no change
-          return
-        }
+          if (lastDate === today) {
+            // Already logged today — no change
+            return
+          }
 
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = yesterday.toLocaleDateString('en-CA')
+          const yesterday = new Date()
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayStr = yesterday.toLocaleDateString('en-CA')
 
-        if (lastDate === yesterdayStr) {
-          newLogging += 1  // consecutive day
-        } else if (!lastDate || lastDate < yesterdayStr) {
-          newLogging = 1   // streak broken or first log ever
-        }
+          if (lastDate === yesterdayStr) {
+            newLogging += 1  // consecutive day
+          } else if (!lastDate || lastDate < yesterdayStr) {
+            newLogging = 1   // streak broken or first log ever
+          }
 
-        await streaks.upsert(userId, {
-          logging: newLogging,
-          last_log_date: today,
-          updated_at: new Date().toISOString(),
-        })
+          await streaks.upsert(userId, {
+            logging: newLogging,
+            last_log_date: today,
+            updated_at: new Date().toISOString(),
+          })
 
-        set({ streakData: { ...current, logging: newLogging } })
+          set({ streakData: { ...current, logging: newLogging } })
 
-        // Grant milestone XP only when the streak hits exactly 3, 7, 14, or 30.
-        // Samurai gets +15% on top of the base bonus.
-        const bonus = getStreakBonus(newLogging)
-        if (bonus.xp > 0 && [3, 7, 14, 30].includes(newLogging)) {
-          const charType = get().character?.character_type
-          const streakXP = charType === 'samurai' ? Math.round(bonus.xp * 1.15) : bonus.xp
-          await characters.addXP(userId, streakXP)
-          get().addXPPopup(`+${streakXP} XP ${bonus.label}`, 'streak')
+          // Grant milestone XP only when the streak hits exactly 3, 7, 14, or 30.
+          // Samurai gets +15% on top of the base bonus.
+          const bonus = getStreakBonus(newLogging)
+          if (bonus.xp > 0 && [3, 7, 14, 30].includes(newLogging)) {
+            const charType = get().character?.character_type
+            const streakXP = charType === 'samurai' ? Math.round(bonus.xp * 1.15) : bonus.xp
+            await characters.addXP(userId, streakXP)
+            get().addXPPopup(`+${streakXP} XP ${bonus.label}`, 'streak')
+          }
+        } finally {
+          set({ _streakUpdating: false })
         }
       },
 

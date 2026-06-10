@@ -67,6 +67,18 @@ export const foodLogs = {
 
   remove: (id) => supabase.from('food_logs').delete().eq('id', id),
 
+  // Most recent log date strictly before `date` — used to roll back streak
+  // credit when today's last log is deleted.
+  getLastLogDateBefore: (userId, date) =>
+    supabase
+      .from('food_logs')
+      .select('log_date')
+      .eq('user_id', userId)
+      .lt('log_date', date)
+      .order('log_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+
   getDailySummary: (userId, date) =>
     supabase.rpc('get_daily_summary', { p_user_id: userId, p_date: date }),
 }
