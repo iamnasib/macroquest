@@ -285,6 +285,48 @@ export const useGameStore = create(
         return data
       },
 
+      // ─── Repeat yesterday's meals (one-tap bulk re-log) ──────────────────
+      repeatYesterday: async (userId) => {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA')
+
+        const { data: yLogs, error: fetchErr } = await foodLogs.getByDate(userId, yesterdayStr)
+        if (fetchErr) throw fetchErr
+        if (!yLogs?.length) return 0
+
+        const today = getTodayLocal()
+        const copies = yLogs.map(l => ({
+          user_id: userId,
+          food_name: l.food_name,
+          brand: l.brand,
+          serving_size: l.serving_size,
+          meal_type: l.meal_type,
+          log_date: today,
+          calories: l.calories,
+          protein: l.protein,
+          carbs: l.carbs,
+          fat: l.fat,
+          fiber: l.fiber,
+        }))
+
+        const { error } = await foodLogs.addMany(copies)
+        if (error) throw error
+
+        // Same XP as logging each food individually, in one grant
+        const logXP = get().applyXPBonus(15) * copies.length
+        await Promise.all([
+          characters.addXP(userId, logXP),
+          get().updateStreak(userId),
+        ])
+        set(state => ({ todayXP: state.todayXP + logXP }))
+        get().addXPPopup(`+${logXP} XP`, 'food')
+
+        await get().loadTodayLogs(userId)
+        await get().refreshCharacter(userId)
+        return copies.length
+      },
+
       // ─── Remove food log ─────────────────────────────────────────────────
       removeFoodLog: async (userId, logId) => {
         // Snapshot which quests were complete before this removal
@@ -502,15 +544,33 @@ export const useGameStore = create(
           yesterday.setDate(yesterday.getDate() - 1)
           const yesterdayStr = yesterday.toLocaleDateString('en-CA')
 
+          let shieldUsedAt = streakRow?.shield_used_at ?? null
+
           if (lastDate === yesterdayStr) {
             newLogging += 1  // consecutive day
           } else if (!lastDate || lastDate < yesterdayStr) {
-            newLogging = 1   // streak broken or first log ever
+            // Streak broken — Streak Shield can bridge EXACTLY ONE missed day,
+            // for streaks of 3+, at most once every 30 days.
+            const dayBefore = new Date()
+            dayBefore.setDate(dayBefore.getDate() - 2)
+            const dayBeforeStr = dayBefore.toLocaleDateString('en-CA')
+            const thirtyAgo = new Date()
+            thirtyAgo.setDate(thirtyAgo.getDate() - 30)
+            const shieldReady = !shieldUsedAt || shieldUsedAt <= thirtyAgo.toLocaleDateString('en-CA')
+
+            if (lastDate === dayBeforeStr && newLogging >= 3 && shieldReady) {
+              newLogging += 1
+              shieldUsedAt = today
+              get().addXPPopup('🛡️ Streak Shield saved your streak!', 'streak')
+            } else {
+              newLogging = 1   // streak broken or first log ever
+            }
           }
 
           await streaks.upsert(userId, {
             logging: newLogging,
             last_log_date: today,
+            shield_used_at: shieldUsedAt,
             updated_at: new Date().toISOString(),
           })
 

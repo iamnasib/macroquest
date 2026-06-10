@@ -63,6 +63,21 @@ export const foodLogs = {
 
   add: (entry) => supabase.from('food_logs').insert(entry).select().single(),
 
+  addMany: (entries) => supabase.from('food_logs').insert(entries).select(),
+
+  // Recent distinct foods for quick re-logging — newest first, capped.
+  getRecent: (userId, days = 14) => {
+    const fromDate = new Date()
+    fromDate.setDate(fromDate.getDate() - days)
+    return supabase
+      .from('food_logs')
+      .select('food_name, brand, serving_size, meal_type, calories, protein, carbs, fat, fiber, log_date')
+      .eq('user_id', userId)
+      .gte('log_date', fromDate.toLocaleDateString('en-CA'))
+      .order('created_at', { ascending: false })
+      .limit(60)
+  },
+
   update: (id, data) => supabase.from('food_logs').update(data).eq('id', id).select().single(),
 
   remove: (id) => supabase.from('food_logs').delete().eq('id', id),

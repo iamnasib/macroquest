@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuthStore, useGameStore } from '../store'
 import { ProgressBar, ResourceChip, Badge, StatCard, EmptyState } from '../components/ui'
-import { QUEST_COLORS, getWorldStage, getMacroStatus, MACRO_STATUS_COLORS, getWeightTrend } from '../lib/gameEngine'
+import { QUEST_COLORS, getWorldStage, getMacroStatus, MACRO_STATUS_COLORS, getWeightTrend, getLevelTitle } from '../lib/gameEngine'
 import { getDailyInsight } from '../lib/aria'
+import { dailySummaries } from '../lib/supabase'
+import { shareWeekCard } from '../lib/shareCard'
 
 function MiniSparkline({ data }) {
   const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-7)
@@ -29,6 +32,39 @@ export default function Dashboard() {
   const { profile, character, todayLogs, todayTotals, todayResources, quests, levelData, streakData, xpPopups, weightHistory, todayWeight } = useGameStore()
   const [ariaInsight, setAriaInsight] = useState(null)
   const [loadingInsight, setLoadingInsight] = useState(false)
+  const [sharing, setSharing] = useState(false)
+
+  const handleShareWeek = async () => {
+    if (sharing) return
+    setSharing(true)
+    try {
+      const { data: weekly } = await dailySummaries.getWeekly(user.id)
+      const days = weekly?.length || 0
+      const sortedW = [...weightHistory].sort((a, b) => a.date.localeCompare(b.date)).slice(-7)
+      const wDelta = sortedW.length >= 2
+        ? +((sortedW[sortedW.length - 1].weight_kg) - sortedW[0].weight_kg).toFixed(1)
+        : null
+      const result = await shareWeekCard({
+        username: profile?.username || 'Champion',
+        level: levelData.level,
+        levelTitle: getLevelTitle(levelData.level),
+        streakDays: streakData?.logging || 0,
+        avgCalories: days ? Math.round(weekly.reduce((s, d) => s + Number(d.total_calories || 0), 0) / days) : 0,
+        avgProtein: days ? Math.round(weekly.reduce((s, d) => s + Number(d.total_protein || 0), 0) / days) : 0,
+        questsCompleted: weekly?.reduce((s, d) => s + (d.quests_completed || 0), 0) || 0,
+        xpEarned: weekly?.reduce((s, d) => s + (d.xp_earned || 0), 0) || 0,
+        weightDelta: wDelta,
+        goalDirection: profile?.goal_direction || 'maintain',
+        daysLogged: days,
+      })
+      if (result === 'downloaded') toast.success('📸 Recap card saved!')
+      else if (result === 'shared') toast.success('📤 Shared!')
+    } catch {
+      toast.error('Could not create the recap card.')
+    } finally {
+      setSharing(false)
+    }
+  }
 
   const calorieGoal = profile?.calorie_goal || 2000
   const proteinGoal = profile?.protein_goal || 150
@@ -92,6 +128,9 @@ export default function Dashboard() {
           <Link to="/quests" className="btn-ghost text-xs">
             ⚔️ Quests
           </Link>
+          <button onClick={handleShareWeek} disabled={sharing} className="btn-ghost text-xs" title="Share your weekly recap">
+            {sharing ? '…' : '📸 Share week'}
+          </button>
         </div>
       </div>
 
@@ -146,7 +185,14 @@ export default function Dashboard() {
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Level"     value={`LVL ${levelData.level}`}     icon="🐉" color="text-gold"    sub={`${levelData.currentXP}/${levelData.xpNeeded} XP`} />
-        <StatCard label="Streak"    value={`${streakData?.logging || 0}d`} icon="🔥" color="text-rose"   sub="Logging streak" />
+        <StatCard label="Streak"    value={`${streakData?.logging || 0}d`} icon="🔥" color="text-rose"
+          sub={(() => {
+            const used = streakData?.shield_used_at
+            const thirtyAgo = new Date()
+            thirtyAgo.setDate(thirtyAgo.getDate() - 30)
+            const ready = !used || used <= thirtyAgo.toLocaleDateString('en-CA')
+            return ready ? 'Logging streak · 🛡️ shield ready' : 'Logging streak'
+          })()} />
         <StatCard label="Quests"    value={`${completedQuests}/4`}         icon="⚔️" color="text-emerald" sub="Completed today" />
         <StatCard label="Meals"     value={todayLogs.length}              icon="🍽️" color="text-crystal" sub="Logged today" />
       </div>
