@@ -331,16 +331,19 @@ export default function FoodLog() {
 
         {/* ── Right: Preview + Log ── */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Daily summary */}
+          {/* Daily summary — follows the viewed date, not always today */}
           <div className="panel p-4">
-            <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.8rem' }}>📊 TODAY'S HAUL</h3>
+            <h3 className="font-pixel text-text mb-3" style={{ fontSize: '0.8rem' }}>
+              {isToday ? "📊 TODAY'S HAUL" : `📊 ${formatViewDate(viewDate).toUpperCase()} HAUL`}
+            </h3>
             <div className="space-y-2">
-              <MacroRow label="⚡ Energy" value={todayTotals.calories.toFixed(0)} goal={calorieGoal} unit="EP" color="text-gold" />
-              <MacroRow label="🔩 Iron"   value={todayTotals.protein.toFixed(1)}  goal={proteinGoal} unit="g"  color="text-iron" />
-              <MacroRow label="🪵 Timber" value={todayTotals.carbs.toFixed(0)}   unit="g"  color="text-amber" />
-              <MacroRow label="✨ Gold"   value={todayTotals.fat.toFixed(1)}     unit="g"  color="text-amber" />
+              <MacroRow label="⚡ Energy" value={displayTotals.calories.toFixed(0)} goal={calorieGoal} unit="EP" color="text-gold" />
+              <MacroRow label="🔩 Iron"   value={displayTotals.protein.toFixed(1)}  goal={proteinGoal} unit="g"  color="text-iron" />
+              <MacroRow label="🪵 Timber" value={displayTotals.carbs.toFixed(0)}   unit="g"  color="text-amber" />
+              <MacroRow label="✨ Gold"   value={displayTotals.fat.toFixed(1)}     unit="g"  color="text-amber" />
             </div>
-            {remaining > 10 && (
+            {/* Food suggestions only make sense for today — past days can't be changed */}
+            {isToday && remaining > 10 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-text-muted font-ui mb-2">Need {remaining.toFixed(0)}g more Iron?</p>
                 {ariaSuggestion ? (

@@ -193,6 +193,35 @@ Deno.serve(async (req) => {
 
   // ── Send queued emails over a single SMTP connection ──
   if (emailReady && emailQueue.length) {
+    // Batch-load digest data for ALL queued users up front — avoids 2 DB
+    // queries per recipient inside the send loop (N+1).
+    const queuedIds = emailQueue.map((q) => q.userId);
+    const sevenAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
+      .toISOString().slice(0, 10);
+    const thirtyAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
+      .toISOString().slice(0, 10);
+
+    const [{ data: allSummaries }, { data: allWeights }] = await Promise.all([
+      supabase.from("daily_summaries")
+        .select("user_id,summary_date,total_calories,total_protein,quests_completed,xp_earned")
+        .in("user_id", queuedIds).gte("summary_date", sevenAgo),
+      supabase.from("body_metrics")
+        .select("user_id,date,weight_kg")
+        .in("user_id", queuedIds).gte("date", thirtyAgo)
+        .order("date", { ascending: true }),
+    ]);
+
+    const summariesByUser = new Map<string, any[]>();
+    for (const s of allSummaries ?? []) {
+      if (!summariesByUser.has(s.user_id)) summariesByUser.set(s.user_id, []);
+      summariesByUser.get(s.user_id)!.push(s);
+    }
+    const weightsByUser = new Map<string, any[]>();
+    for (const w of allWeights ?? []) {
+      if (!weightsByUser.has(w.user_id)) weightsByUser.set(w.user_id, []);
+      weightsByUser.get(w.user_id)!.push(w);
+    }
+
     let client: SMTPClient | null = null;
     try {
       client = new SMTPClient({
@@ -209,7 +238,12 @@ Deno.serve(async (req) => {
         const email = u?.user?.email;
         if (!email) continue;
 
-        const html = await buildDigestHtml(supabase, item.profile, streakMap.get(item.userId));
+        const html = buildDigestHtml(
+          item.profile,
+          streakMap.get(item.userId),
+          summariesByUser.get(item.userId) ?? [],
+          weightsByUser.get(item.userId) ?? [],
+        );
         try {
           await client.send({
             from: `MacroQuest <${gmailUser}>`,
@@ -235,24 +269,8 @@ Deno.serve(async (req) => {
   return json({ ok: true, ...stats });
 });
 
-// Builds a lightweight HTML digest from recent summaries + weight history.
-async function buildDigestHtml(supabase: any, profile: any, streak: any): Promise<string> {
-  const userId = profile.id;
-  const now = new Date();
-  const sevenAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
-    .toISOString().slice(0, 10);
-  const thirtyAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
-    .toISOString().slice(0, 10);
-
-  const [{ data: summaries }, { data: weights }] = await Promise.all([
-    supabase.from("daily_summaries")
-      .select("summary_date,total_calories,total_protein,quests_completed,xp_earned")
-      .eq("user_id", userId).gte("summary_date", sevenAgo),
-    supabase.from("body_metrics")
-      .select("date,weight_kg").eq("user_id", userId)
-      .gte("date", thirtyAgo).order("date", { ascending: true }),
-  ]);
-
+// Builds a lightweight HTML digest from pre-fetched summaries + weight history.
+function buildDigestHtml(profile: any, streak: any, summaries: any[], weights: any[]): string {
   const days = summaries?.length || 0;
   const avgProtein = days ? Math.round(summaries.reduce((s: number, d: any) => s + Number(d.total_protein || 0), 0) / days) : 0;
   const avgCalories = days ? Math.round(summaries.reduce((s: number, d: any) => s + Number(d.total_calories || 0), 0) / days) : 0;
